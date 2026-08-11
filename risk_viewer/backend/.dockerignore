@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+risk_viewer_backend.egg-info/
+app/data/precomputed/

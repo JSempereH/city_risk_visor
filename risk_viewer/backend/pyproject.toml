@@ -1,0 +1,75 @@
+[project]
+name = "risk-viewer-backend"
+version = "0.1.0"
+description = "Lightweight FastAPI backend serving exposure/typology layers for the seismic risk viewer."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "geopandas>=1.1.4",
+    "numpy",
+    "pydantic>=2",
+    "footprint-attributes",
+    "scikit-learn>=1.9,<2",
+    "joblib>=1.5",
+    # Only openquake.hazardlib's GMPE classes are used (app/hazard/gmpe.py)
+    # -- not the full OpenQuake Engine (its risk calculators, web server,
+    # etc.). hazardlib isn't published as its own PyPI package, so this
+    # pulls in the whole `openquake-engine` wheel (pure Python, installs
+    # fine) but its *declared* dependencies include things this app never
+    # imports and that don't have prebuilt wheels here (gdal needs a system
+    # gdal-config we don't have and won't install without asking; django/
+    # fiona/pyzmq/docutils/pillow/django-cors-headers are for the engine's
+    # web server and risk calculators, unrelated to hazardlib). Neutralised below
+    # via [tool.uv.override-dependencies] with an always-false marker, so
+    # uv's resolver treats them as satisfied without installing anything.
+    "openquake-engine>=3.26",
+    "toml",
+    "h5py",
+    "decorator",
+    "psutil",
+    "numba",
+    "h3",
+    "alpha-shapes",
+    "fiona",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+]
+# Only needed to run scripts/geodata/ (Vs30 and population data
+# reproduction, see that directory's README.md), not by the app itself.
+# rasterio ships its own bundled GDAL in its wheel (unlike the bare
+# `gdal` PyPI package openquake-engine declares and this project
+# deliberately excludes below), so it installs cleanly here.
+geodata = [
+    "rasterio>=1.4",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.uv.sources]
+# Pinned to a commit (not a local sibling-repo path) so this backend is
+# buildable from a clone of risk_viewer/ alone, independent of any
+# particular monorepo layout on disk -- see app/config.py's docstring for
+# the same rationale applied to the vendored data files.
+footprint-attributes = { git = "https://github.com/GeomaticsCaminosUPM/footprint_attributes.git", rev = "5cde0c7" }
+
+[tool.uv]
+# See the comment on openquake-engine above: these are declared
+# dependencies of that package we never import and can't/don't want to
+# build here. `sys_platform == "never"` is never true, so uv treats each
+# as satisfied without installing it.
+override-dependencies = [
+    "gdal; sys_platform == 'never'",
+    "django; sys_platform == 'never'",
+    "django-cors-headers; sys_platform == 'never'",
+    "docutils; sys_platform == 'never'",
+]

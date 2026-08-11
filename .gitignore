@@ -1,0 +1,17 @@
+# This repo tracks risk_viewer/ only. The sibling directories are their
+# own projects (footprint_attributes/ is even its own separate git repo)
+# and are consumed by risk_viewer as external data/dependencies, not
+# tracked here.
+/footprint_attributes/
+/FragilityCurves/
+/ml_structural_system/
+
+# Generic safety net (risk_viewer/backend and risk_viewer/frontend also
+# have their own more specific .gitignore files).
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.DS_Store
+.env

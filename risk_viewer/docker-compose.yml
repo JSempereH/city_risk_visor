@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      # Same-origin in production (Caddy proxies /api/* to this
+      # container), so CORS is mostly a formality once deployed, still
+      # set to the real domain there. Left at the frontend dev-server
+      # default here for local docker-compose smoke testing.
+      RISK_VIEWER_FRONTEND_ORIGIN: ${RISK_VIEWER_FRONTEND_ORIGIN:-http://localhost:5183}
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/api/health').status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      # Cold start imports openquake.hazardlib (every GMPE module, 15-150s
+      # depending on page-cache warmth) *and* blocks on loading/processing
+      # every city's exposure data before the app accepts connections
+      # (app/main.py's lifespan hook). Generous budget so
+      # `depends_on: condition: service_healthy` doesn't give up early.
+      start_period: 3m
+      retries: 10
+
+  proxy:
+    build:
+      context: .
+      dockerfile: deploy/proxy/Dockerfile
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy

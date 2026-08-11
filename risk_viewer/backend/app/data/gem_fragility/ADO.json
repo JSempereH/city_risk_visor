@@ -1,0 +1,65 @@
+{
+ "DNO_H1": {
+  "period_s": 0.3,
+  "states": {
+   "slight": {
+    "median_sd_mm": 5.5654,
+    "beta": 0.5823
+   },
+   "moderate": {
+    "median_sd_mm": 13.9044,
+    "beta": 0.583
+   },
+   "extensive": {
+    "median_sd_mm": 20.5249,
+    "beta": 0.5805
+   },
+   "complete": {
+    "median_sd_mm": 26.1449,
+    "beta": 0.5811
+   }
+  }
+ },
+ "DNO_H2": {
+  "period_s": 0.3,
+  "states": {
+   "slight": {
+    "median_sd_mm": 5.6652,
+    "beta": 0.6147
+   },
+   "moderate": {
+    "median_sd_mm": 14.3735,
+    "beta": 0.6147
+   },
+   "extensive": {
+    "median_sd_mm": 22.0964,
+    "beta": 0.614
+   },
+   "complete": {
+    "median_sd_mm": 28.8916,
+    "beta": 0.6147
+   }
+  }
+ },
+ "DNO_H3": {
+  "period_s": 0.6,
+  "states": {
+   "slight": {
+    "median_sd_mm": 9.729,
+    "beta": 0.4953
+   },
+   "moderate": {
+    "median_sd_mm": 27.0313,
+    "beta": 0.4963
+   },
+   "extensive": {
+    "median_sd_mm": 43.6086,
+    "beta": 0.496
+   },
+   "complete": {
+    "median_sd_mm": 58.9132,
+    "beta": 0.4966
+   }
+  }
+ }
+}

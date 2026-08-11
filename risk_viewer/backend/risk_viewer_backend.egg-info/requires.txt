@@ -1,0 +1,17 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+geopandas>=1.1.4
+numpy
+pydantic>=2
+footprint-attributes
+scikit-learn<2,>=1.9
+joblib>=1.5
+openquake-engine>=3.26
+toml
+h5py
+decorator
+psutil
+numba
+h3
+alpha-shapes
+fiona

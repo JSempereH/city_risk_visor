@@ -1,0 +1,179 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<nrml>
+	<logicTree logicTreeID="lt1">
+<logicTreeBranchSet applyToTectonicRegionType="Subduction Interface CAM" branchSetID="bs2" uncertaintyType="gmpeModel">
+			<logicTreeBranch branchID="AG2020SInter_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonGulerce2020SInter'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.8}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="AG2020SInter_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonGulerce2020SInter'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.3}}
+				</uncertaintyModel>
+				<uncertaintyWeight>3.1500000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="AG2020SInter_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonGulerce2020SInter'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.9}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="KuehnEtAl2020SInter_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'KuehnEtAl2020SInter'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.7}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="KuehnEtAl2020SInter_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'KuehnEtAl2020SInter'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.0}}
+				</uncertaintyModel>
+				<uncertaintyWeight>3.1500000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="KuehnEtAl2020SInter_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'KuehnEtAl2020SInter'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.5}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+		</logicTreeBranchSet>
+<logicTreeBranchSet applyToTectonicRegionType="Subduction IntraSlab CAM" branchSetID="bs3" uncertaintyType="gmpeModel">
+			<logicTreeBranch branchID="AG2020SSlab_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonGulerce2020SSlab'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.4}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="AG2020SSlab_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonGulerce2020SSlab'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.6}}
+				</uncertaintyModel>
+				<uncertaintyWeight>3.1500000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="AG2020SSlab_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonGulerce2020SSlab'= {'region'= 'CAM'}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.0}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="ParkerEtAl2020SSlab_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'ParkerEtAl2020SSlab'= {'region'= 'CAM', 'saturation_region'= 'CAM_N'}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.6}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="ParkerEtAl2020SSlab_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'ParkerEtAl2020SSlab'= {'region'= 'CAM', 'saturation_region'= 'CAM_N'}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.9}}
+				</uncertaintyModel>
+				<uncertaintyWeight>3.1500000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="ParkerEtAl2020SSlab_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'ParkerEtAl2020SSlab'= {'region'= 'CAM', 'saturation_region'= 'CAM_N'}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.4}}
+				</uncertaintyModel>
+				<uncertaintyWeight>9.2500000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+		</logicTreeBranchSet>
+<logicTreeBranchSet applyToTectonicRegionType="Active Shallow Crust CAM" branchSetID="bs1" uncertaintyType="gmpeModel">
+			<logicTreeBranch branchID="ASK14_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonEtAl2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.4}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="ASK14_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonEtAl2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.6}}
+				</uncertaintyModel>
+				<uncertaintyWeight>1.5750000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="ASK14_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'AbrahamsonEtAl2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.8}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="BSSA14_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'BooreEtAl2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.6}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="BSSA14_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'BooreEtAl2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.8}}
+				</uncertaintyModel>
+				<uncertaintyWeight>1.5750000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="BSSA14_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'BooreEtAl2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 1.1}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="CB14_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'CampbellBozorgnia2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.4}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="CB14_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'CampbellBozorgnia2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.6}}
+				</uncertaintyModel>
+				<uncertaintyWeight>1.5750000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="CB14_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'CampbellBozorgnia2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.9}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="CY14_16th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'ChiouYoungs2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.4}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="CY14_50th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'ChiouYoungs2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.6}}
+				</uncertaintyModel>
+				<uncertaintyWeight>1.5750000E-01</uncertaintyWeight>
+			</logicTreeBranch>
+			<logicTreeBranch branchID="CY14_84th_percentile">
+				<uncertaintyModel>
+					[ModifiableGMPE]
+					gmpe.ModifiableGMPE={'gmpe'= {'ChiouYoungs2014'= {}}, 'set_scale_median_scalar'= {'scaling_factor'= 0.9}}
+				</uncertaintyModel>
+				<uncertaintyWeight>4.6250000E-02</uncertaintyWeight>
+			</logicTreeBranch>
+		</logicTreeBranchSet>
+</logicTree>
+</nrml>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2213%22 font-size=%2213%22>%F0%9F%8F%99%EF%B8%8F</text></svg>" />
+    <title>City Risk Visor</title>
+    <!-- Loaded directly, not just via main.ts's `import "./style.css"`,
+         so the browser can start fetching/applying it in parallel with
+         the JS module graph instead of only after main.ts finishes
+         executing -- otherwise the page paints unstyled for a moment
+         first (a flash of unstyled content), most visible in Vite dev
+         mode where the module graph is many small separate requests
+         rather than one bundle. Vite dedupes this against main.ts's own
+         import in both dev and the production build. -->
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="map"></div>
+      <aside id="controls">
+        <h1>City Risk Visor</h1>
+        <p class="subtitle" id="mode-subtitle">Exposure &amp; typology</p>
+
+        <label for="mode-select">Layer</label>
+        <select id="mode-select">
+          <option value="exposure">Exposure &amp; typology</option>
+          <option value="risk">Seismic risk scenario</option>
+        </select>
+
+        <label for="attribute-select">Color by</label>
+        <select id="attribute-select"></select>
+
+        <label for="city-select">City</label>
+        <select id="city-select"></select>
+
+        <div id="scenario-panel" class="hidden"></div>
+
+        <div id="legend"></div>
+        <div id="typology-quality"></div>
+        <p class="hint" id="mode-hint">Click a building to see its capacity &amp; fragility curves.</p>
+      </aside>
+      <aside id="building-panel" class="hidden">
+        <button id="building-panel-close" aria-label="Close">&times;</button>
+        <div id="building-panel-content"></div>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,116 @@
+{
+  "ignore_features": [
+    "id",
+    "city",
+    "geometry"
+  ],
+  "ordinal_feature_mappings": {
+    "code_quality": [
+      "pre_code",
+      "low_code"
+    ]
+  },
+  "categorical_feature_mappings": {
+    "relativePosition": [
+      "corner",
+      "confined",
+      "isolated",
+      "lateral",
+      "torque"
+    ],
+    "roof_material": [
+      "metallic",
+      "bright_concrete",
+      "dark_shadow",
+      "asphalt"
+    ]
+  },
+  "label": "structural_system",
+  "label_values": [
+    "ADO",
+    "CR",
+    "M",
+    "W"
+  ],
+  "group": [
+    "city"
+  ],
+  "label_replacements": {
+    "S_light": "W",
+    "S_frame": "CR",
+    "MUR": "M",
+    "MCF": "M",
+    "MR": "M",
+    "I": "None"
+  },
+  "feature_columns": [
+    "height",
+    "n_floors",
+    "code_quality",
+    "year",
+    "roof_material",
+    "EC8_eccentricityRatio",
+    "EC8_radiusRatio",
+    "EC8_compactness",
+    "ASCE7_setbackRatio",
+    "ASCE7_holeRatio",
+    "ASCE7_parallelityAngle",
+    "GNDTII_beta1_mainShapeSlenderness",
+    "GNDTII_beta2_setbackRatio",
+    "GNDTII_beta4_eccentricityRatio",
+    "GNDTII_beta6_setbackSlenderness",
+    "CSCR2010_eccentricityRatio",
+    "NTC23_setbackRatio",
+    "NTC23_holeRatio",
+    "polsby_popper",
+    "convex_hull_irregularity",
+    "inertia_circle_ratio",
+    "slenderness_bbox",
+    "slenderness_inertia",
+    "contact_force",
+    "contact_confinementRatio",
+    "contact_angularAcc",
+    "contact_angle",
+    "relativePosition"
+  ],
+  "code_type": null,
+  "feature_names": [
+    "height",
+    "n_floors",
+    "year",
+    "EC8_eccentricityRatio",
+    "EC8_radiusRatio",
+    "EC8_compactness",
+    "ASCE7_setbackRatio",
+    "ASCE7_holeRatio",
+    "ASCE7_parallelityAngle",
+    "GNDTII_beta1_mainShapeSlenderness",
+    "GNDTII_beta2_setbackRatio",
+    "GNDTII_beta4_eccentricityRatio",
+    "GNDTII_beta6_setbackSlenderness",
+    "CSCR2010_eccentricityRatio",
+    "NTC23_setbackRatio",
+    "NTC23_holeRatio",
+    "polsby_popper",
+    "convex_hull_irregularity",
+    "inertia_circle_ratio",
+    "slenderness_bbox",
+    "slenderness_inertia",
+    "contact_force",
+    "contact_confinementRatio",
+    "contact_angularAcc",
+    "contact_angle",
+    "code_quality",
+    "roof_material_dark_shadow",
+    "roof_material_metallic",
+    "relativePosition_corner",
+    "relativePosition_isolated",
+    "relativePosition_lateral",
+    "relativePosition_torque"
+  ],
+  "label_mapping": {
+    "ADO": 0,
+    "CR": 1,
+    "M": 2
+  }
+}

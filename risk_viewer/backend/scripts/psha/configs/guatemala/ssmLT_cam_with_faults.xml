@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nrml xmlns:gml="http://www.opengis.net/gml" xmlns="http://openquake.org/xmlns/nrml/0.5">
+    <logicTree logicTreeID="lt1">
+        <logicTreeBranchSet uncertaintyType="sourceModel" branchSetID="bs1">
+            <logicTreeBranch branchID="b1">
+                <uncertaintyModel>
+ssm/cam/crustal/zones/src_buffers_16.xml
+ssm/cam/crustal/zones/src_buffers_sz10.xml
+ssm/cam/crustal/zones/src_buffers_sz11.xml
+ssm/cam/crustal/zones/src_buffers_sz13.xml
+ssm/cam/crustal/zones/src_buffers_sz14.xml
+ssm/cam/crustal/zones/src_buffers_sz6.xml
+ssm/cam/crustal/zones/src_buffers_sz8.xml
+ssm/cam/crustal/zones/src_buffers_sz9.xml
+ssm/cam/crustal/zones/src_points_15.xml
+ssm/cam/crustal/zones/src_points_16.xml
+ssm/cam/crustal/zones/src_points_4.xml
+ssm/cam/crustal/zones/src_points_sz0.xml
+ssm/cam/crustal/zones/src_points_sz1.xml
+ssm/cam/crustal/zones/src_points_sz10.xml
+ssm/cam/crustal/zones/src_points_sz11.xml
+ssm/cam/crustal/zones/src_points_sz12.xml
+ssm/cam/crustal/zones/src_points_sz13.xml
+ssm/cam/crustal/zones/src_points_sz14.xml
+ssm/cam/crustal/zones/src_points_sz2.xml
+ssm/cam/crustal/zones/src_points_sz3.xml
+ssm/cam/crustal/zones/src_points_sz5.xml
+ssm/cam/crustal/zones/src_points_sz6.xml
+ssm/cam/crustal/zones/src_points_sz7.xml
+ssm/cam/crustal/zones/src_points_sz8.xml
+ssm/cam/crustal/zones/src_points_sz9.xml
+ssm/cam/interface/segmentation1_collapsed.xml
+ssm/cam/interface/segmentation2_collapsed.xml
+ssm/cam/slab/slabAB_collapsed.xml
+ssm/cam/slab/slabC_collapsed.xml
+                </uncertaintyModel>
+                <uncertaintyWeight>1.0</uncertaintyWeight>
+            </logicTreeBranch>
+        </logicTreeBranchSet>
+        <logicTreeBranchSet branchSetID="faults" uncertaintyType="extendModel">
+            <logicTreeBranch branchID="bF_00_0">
+                <uncertaintyModel>
+                    ssm/cam/crustal/faults/cam_faults_v1.xml
+                    ssm/cam/crustal/faults/cam_faults_v1_sections.xml
+                </uncertaintyModel>
+                <uncertaintyWeight>0.5</uncertaintyWeight>
+            </logicTreeBranch>
+            <logicTreeBranch branchID="bF_00_1">
+                <uncertaintyModel>
+                    ssm/cam/crustal/faults/cam_faults_v2.xml
+                    ssm/cam/crustal/faults/cam_faults_v1_sections.xml
+                </uncertaintyModel>
+                <uncertaintyWeight>0.5</uncertaintyWeight>
+            </logicTreeBranch>
+        </logicTreeBranchSet>
+    </logicTree>
+</nrml>

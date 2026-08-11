@@ -1,0 +1,73 @@
+{
+  "guatemala": {
+    "city": "guatemala",
+    "n_predictions_csv": 302,
+    "n_held_out_test": 103,
+    "n_held_out_dropped_missing": 0,
+    "classes": [
+      "ADO",
+      "CR",
+      "M"
+    ],
+    "has_ground_truth": true,
+    "ensemble_f1_macro": 0.5657,
+    "ensemble_f1_macro_ci": {
+      "lower": 0.4551,
+      "upper": 0.6712,
+      "confidence": 0.95
+    },
+    "inter_model_fleiss_kappa": 0.5227,
+    "inter_model_fleiss_kappa_ci": {
+      "lower": 0.4079,
+      "upper": 0.6253,
+      "confidence": 0.95
+    }
+  },
+  "san_jose": {
+    "city": "san_jose",
+    "n_predictions_csv": 655,
+    "n_held_out_test": 131,
+    "n_held_out_dropped_missing": 1,
+    "classes": [
+      "CR",
+      "M",
+      "W"
+    ],
+    "has_ground_truth": true,
+    "ensemble_f1_macro": 0.5628,
+    "ensemble_f1_macro_ci": {
+      "lower": 0.4518,
+      "upper": 0.6695,
+      "confidence": 0.95
+    },
+    "inter_model_fleiss_kappa": 0.4746,
+    "inter_model_fleiss_kappa_ci": {
+      "lower": 0.3388,
+      "upper": 0.6034,
+      "confidence": 0.95
+    }
+  },
+  "santo_domingo": {
+    "city": "santo_domingo",
+    "n_predictions_csv": 1427,
+    "n_held_out_test": 155,
+    "n_held_out_dropped_missing": 0,
+    "classes": [
+      "CR",
+      "M"
+    ],
+    "has_ground_truth": true,
+    "ensemble_f1_macro": 0.4457,
+    "ensemble_f1_macro_ci": {
+      "lower": 0.3697,
+      "upper": 0.5196,
+      "confidence": 0.95
+    },
+    "inter_model_fleiss_kappa": 0.2726,
+    "inter_model_fleiss_kappa_ci": {
+      "lower": 0.1699,
+      "upper": 0.38,
+      "confidence": 0.95
+    }
+  }
+}

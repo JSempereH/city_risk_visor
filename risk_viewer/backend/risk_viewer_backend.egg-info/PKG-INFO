@@ -1,0 +1,22 @@
+Metadata-Version: 2.4
+Name: risk-viewer-backend
+Version: 0.1.0
+Summary: Lightweight FastAPI backend serving exposure/typology layers for the seismic risk viewer.
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn[standard]>=0.30
+Requires-Dist: geopandas>=1.1.4
+Requires-Dist: numpy
+Requires-Dist: pydantic>=2
+Requires-Dist: footprint-attributes
+Requires-Dist: scikit-learn<2,>=1.9
+Requires-Dist: joblib>=1.5
+Requires-Dist: openquake-engine>=3.26
+Requires-Dist: toml
+Requires-Dist: h5py
+Requires-Dist: decorator
+Requires-Dist: psutil
+Requires-Dist: numba
+Requires-Dist: h3
+Requires-Dist: alpha-shapes
+Requires-Dist: fiona

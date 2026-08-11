@@ -1,0 +1,30 @@
+# Local/dev: plain HTTP on :80, since there's no real domain yet for
+# Caddy to provision a Let's Encrypt certificate for.
+#
+# For production, once you have a domain: replace the ":80" line below
+# with the domain itself, e.g.
+#
+#   your-domain.example {
+#       ...
+#   }
+#
+# and Caddy automatically provisions and renews HTTPS for it -- no other
+# config change needed. Nothing else in this file changes.
+:80 {
+	root * /srv/frontend/dist
+	file_server
+	encode gzip
+
+	reverse_proxy /api/* backend:8001
+}
+
+# NOTE: no rate-limiting configured yet. The one endpoint worth limiting
+# once this is public is /api/scenarios/{city}/summary and .../risk when
+# called with a magnitude/depth_km/epicenter_* override (a genuine
+# 15-90s live computation per distinct combination, protected against
+# *duplicate* concurrent requests by app/risk/service.py's coalescing
+# lock, but not against many *distinct* rapid requests from one visitor).
+# Stock Caddy has no built-in rate limiter; adding one means building a
+# custom Caddy binary with the community plugin
+# github.com/mholt/caddy-ratelimit via xcaddy. Deferred until this is
+# actually public-facing.
