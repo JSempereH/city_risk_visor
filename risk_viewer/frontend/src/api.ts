@@ -124,7 +124,20 @@ const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http:
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`);
   if (!response.ok) {
-    throw new Error(`Request to ${path} failed: ${response.status}`);
+    // FastAPI's HTTPException puts the actual reason (e.g. "magnitude
+    // must be between 4.5 and 9.0") in the response body's `detail`
+    // field, not the status line -- surface that instead of just the
+    // status code, or an invalid input silently reads as "backend is
+    // broken" instead of "try a different value".
+    let detail: string | undefined;
+    try {
+      const body = await response.json();
+      detail = typeof body?.detail === "string" ? body.detail : undefined;
+    } catch {
+      // Response wasn't JSON (e.g. a proxy error page); fall through to
+      // the generic message below.
+    }
+    throw new Error(detail ?? `Request to ${path} failed: ${response.status}`);
   }
   return response.json() as Promise<T>;
 }

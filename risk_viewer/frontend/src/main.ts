@@ -4,9 +4,9 @@ import { populateAttributeSelect, populateCitySelect } from "./ui";
 import { closeBuildingPanel, selectBuilding } from "./buildingController";
 import { computeBbox, map, renderLayer, setBuildingClickHandler } from "./mapLayers";
 import {
-  applyScenarioOverrides,
   hideScenarioPanelForExposureMode,
   loadRiskForCity,
+  pickEpicenter,
   setEpicenterPicking,
 } from "./scenarioController";
 import { activeAttributes, filteredExposureData, numericRangeOf, state, type Mode } from "./state";
@@ -153,11 +153,7 @@ async function bootstrap(): Promise<void> {
 
   map.on("click", (event) => {
     if (!state.pickingEpicenter) return;
-    applyScenarioOverrides({
-      ...state.scenarioOverrides,
-      epicenter_lat: event.lngLat.lat,
-      epicenter_lon: event.lngLat.lng,
-    });
+    pickEpicenter(event.lngLat.lat, event.lngLat.lng);
   });
 
   const initialData = state.city ? filteredExposureData() : data;

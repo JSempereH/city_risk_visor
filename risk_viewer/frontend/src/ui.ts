@@ -25,10 +25,6 @@ export function populateCitySelect(
   onChange: (city: string | null) => void,
 ): void {
   select.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "";
-  allOption.textContent = "All cities";
-  select.appendChild(allOption);
   for (const city of cities) {
     const option = document.createElement("option");
     option.value = city;

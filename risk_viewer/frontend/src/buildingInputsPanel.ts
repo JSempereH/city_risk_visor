@@ -88,20 +88,6 @@ export function renderOverrideControls(
   floorsField.appendChild(floorsInput);
   grid.appendChild(floorsField);
 
-  const heightField = document.createElement("label");
-  heightField.textContent = "Height (m)";
-  const heightInput = document.createElement("input");
-  heightInput.type = "number";
-  heightInput.min = "1";
-  heightInput.step = "0.5";
-  heightInput.placeholder = building.height !== null ? String(building.height) : "N/A";
-  heightInput.value = current.height !== undefined ? String(current.height) : "";
-  heightInput.addEventListener("change", () =>
-    emit({ height: heightInput.value === "" ? undefined : Number(heightInput.value) }),
-  );
-  heightField.appendChild(heightInput);
-  grid.appendChild(heightField);
-
   const qualityField = document.createElement("label");
   qualityField.textContent = "Code quality";
   const qualitySelect = document.createElement("select");

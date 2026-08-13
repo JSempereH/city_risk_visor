@@ -12,10 +12,21 @@ export interface PshaInfo {
 
 export interface ScenarioControls {
   overrides: ScenarioOverrides;
+  // Typed-or-picked-but-not-yet-applied form values, see
+  // state.ts::AppState.scenarioDraft's own comment for why this is
+  // separate from `overrides`.
+  draft: ScenarioOverrides;
+  // Set when the last Apply/return-period/reset attempt failed, so the
+  // panel can report it without discarding the still-valid previous
+  // scenario and controls (unlike the transient full-panel "Running
+  // scenario..." replacement, an error leaves the form in place so the
+  // user can fix the value and retry).
+  error: string | null;
   pickingEpicenter: boolean;
   psha: PshaInfo;
   onApply: (overrides: ScenarioOverrides) => void;
   onReset: () => void;
+  onDraftChange: (patch: Partial<ScenarioOverrides>) => void;
   onTogglePickEpicenter: () => void;
   onSelectReturnPeriod: (years: number) => void;
   onSwitchToDeterministic: () => void;
@@ -53,6 +64,7 @@ function numberField(
   label: string,
   value: number,
   attrs: { min?: number; max?: number; step?: number },
+  onDraftChange?: (value: number) => void,
 ): HTMLInputElement {
   const field = document.createElement("label");
   field.textContent = label;
@@ -62,6 +74,15 @@ function numberField(
   if (attrs.min !== undefined) input.min = String(attrs.min);
   if (attrs.max !== undefined) input.max = String(attrs.max);
   if (attrs.step !== undefined) input.step = String(attrs.step);
+  // Written back to the draft as the user types, not just read at
+  // "Apply" time, so a re-render triggered by something else (picking
+  // an epicenter on the map) can restore this value instead of
+  // silently reverting it to the last-applied one.
+  if (onDraftChange) {
+    input.addEventListener("input", () => {
+      if (input.value !== "") onDraftChange(Number(input.value));
+    });
+  }
   field.appendChild(input);
   grid.appendChild(field);
   return input;
@@ -185,10 +206,11 @@ function renderCustomScenarioControls(
   controls: ScenarioControls,
 ): void {
   const isOverridden = Object.keys(controls.overrides).length > 0;
+  const hasPendingDraft = Object.keys(controls.draft).length > 0;
 
   const details = document.createElement("details");
   details.className = "scenario-controls";
-  details.open = isOverridden || controls.pickingEpicenter;
+  details.open = isOverridden || controls.pickingEpicenter || hasPendingDraft;
 
   const summaryEl = document.createElement("summary");
   summaryEl.textContent = isOverridden ? "Custom scenario (edited)" : "Custom scenario";
@@ -204,26 +226,45 @@ function renderCustomScenarioControls(
     "Adjust magnitude, depth, or epicenter and re-run the scenario. Tectonic regime stays fixed to the source cited above.";
   body.appendChild(hint);
 
+  if (hasPendingDraft) {
+    const pendingNotice = document.createElement("p");
+    pendingNotice.className = "scenario-pending-notice";
+    pendingNotice.textContent = "Not applied yet: click Apply below to run this.";
+    body.appendChild(pendingNotice);
+  }
+
   const grid = document.createElement("div");
   grid.className = "override-grid";
   body.appendChild(grid);
 
-  const magnitudeInput = numberField(grid, "Magnitude", summary.scenario.magnitude, {
-    min: 4.5,
-    max: 9.0,
-    step: 0.1,
-  });
-  const depthInput = numberField(grid, "Depth (km)", summary.scenario.depth_km, {
-    min: 1,
-    max: 200,
-    step: 1,
-  });
-  const latInput = numberField(grid, "Epicenter lat", Number(summary.scenario.epicenter_lat.toFixed(4)), {
-    step: 0.01,
-  });
-  const lonInput = numberField(grid, "Epicenter lon", Number(summary.scenario.epicenter_lon.toFixed(4)), {
-    step: 0.01,
-  });
+  const magnitudeInput = numberField(
+    grid,
+    "Magnitude",
+    controls.draft.magnitude ?? summary.scenario.magnitude,
+    { min: 4.5, max: 9.0, step: 0.1 },
+    (value) => controls.onDraftChange({ magnitude: value }),
+  );
+  const depthInput = numberField(
+    grid,
+    "Depth (km)",
+    controls.draft.depth_km ?? summary.scenario.depth_km,
+    { min: 1, max: 200, step: 1 },
+    (value) => controls.onDraftChange({ depth_km: value }),
+  );
+  const latInput = numberField(
+    grid,
+    "Epicenter lat",
+    controls.draft.epicenter_lat ?? Number(summary.scenario.epicenter_lat.toFixed(4)),
+    { step: 0.01 },
+    (value) => controls.onDraftChange({ epicenter_lat: value }),
+  );
+  const lonInput = numberField(
+    grid,
+    "Epicenter lon",
+    controls.draft.epicenter_lon ?? Number(summary.scenario.epicenter_lon.toFixed(4)),
+    { step: 0.01 },
+    (value) => controls.onDraftChange({ epicenter_lon: value }),
+  );
 
   const buttonRow = document.createElement("div");
   buttonRow.className = "scenario-button-row";
@@ -250,7 +291,7 @@ function renderCustomScenarioControls(
   });
   buttonRow.appendChild(applyButton);
 
-  if (isOverridden) {
+  if (isOverridden || hasPendingDraft) {
     const resetButton = document.createElement("button");
     resetButton.type = "button";
     resetButton.textContent = "Reset to default";
@@ -286,6 +327,13 @@ export function renderScenarioPanel(
     }`;
   }
   container.appendChild(meta);
+
+  if (controls.error) {
+    const errorNotice = document.createElement("p");
+    errorNotice.className = "scenario-error";
+    errorNotice.textContent = controls.error;
+    container.appendChild(errorNotice);
+  }
 
   const note = document.createElement("p");
   note.className = "scenario-note";

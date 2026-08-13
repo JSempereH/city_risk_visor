@@ -209,7 +209,19 @@ export function renderLineChart(container: HTMLElement, options: LineChartOption
         }
       }
       const label = svgEl("text");
-      label.setAttribute("x", String(xScale(sharedX[crossing]) + 4));
+      const labelX = xScale(sharedX[crossing]);
+      // Curves that never cross their target fraction within the
+      // plotted range (e.g. a "Complete" curve still rising at the
+      // right edge) anchor their label at the rightmost point, where a
+      // left-aligned label would run past the plot's right edge and get
+      // clipped by the wrapper's overflow. No live text measurement
+      // (the element isn't attached yet), so estimate width from
+      // character count at this font-size and flip to right-aligned
+      // when that estimate would overflow.
+      const estimatedLabelWidth = s.label.length * 6;
+      const overflowsRight = labelX + 4 + estimatedLabelWidth > width - MARGIN.right;
+      label.setAttribute("x", String(overflowsRight ? labelX - 4 : labelX + 4));
+      label.setAttribute("text-anchor", overflowsRight ? "end" : "start");
       label.setAttribute("y", String(yScale(s.y[crossing]) - 4));
       label.setAttribute("font-size", "10");
       label.setAttribute("font-weight", "600");

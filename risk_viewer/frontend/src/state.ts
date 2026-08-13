@@ -49,6 +49,17 @@ export interface AppState {
   // if disaggregation isn't available for this city/return period.
   disaggregation: Disaggregation | null;
   pickingEpicenter: boolean;
+  // Custom-scenario form values the user has typed or picked on the map
+  // but not yet applied (see scenarioController.ts's pickEpicenter()):
+  // kept separate from scenarioOverrides (the last *applied* values) so
+  // a re-render triggered by picking an epicenter doesn't wipe out a
+  // magnitude/depth the user already typed but hadn't clicked "Apply"
+  // for yet.
+  scenarioDraft: ScenarioOverrides;
+  // Set when the last apply/reset/return-period attempt failed (see
+  // scenarioController.ts's loadRiskForCity), cleared on the next
+  // successful load or as soon as the user edits the draft again.
+  scenarioError: string | null;
   selectedBuildingId: string | null;
   buildingOverrides: VulnerabilityOverrides;
 }
@@ -69,6 +80,8 @@ export const state: AppState = {
   hazardCurve: null,
   disaggregation: null,
   pickingEpicenter: false,
+  scenarioDraft: {},
+  scenarioError: null,
   selectedBuildingId: null,
   buildingOverrides: {},
 };

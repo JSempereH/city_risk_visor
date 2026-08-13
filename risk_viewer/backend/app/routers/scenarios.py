@@ -41,6 +41,14 @@ def _build_scenario(
     if magnitude is None and depth_km is None and epicenter_lat is None and epicenter_lon is None:
         return base
 
+    # base.label is "Mw {default magnitude}, {fault/interface name}"; once
+    # any field is overridden that magnitude no longer matches what's
+    # actually run, so keep only the fault/interface name and mark the
+    # scenario as custom instead of showing a stale magnitude next to the
+    # real one in scenario-meta.
+    _, _, fault_name = base.label.partition(", ")
+    custom_label = f"Custom scenario, {fault_name}" if fault_name else "Custom scenario"
+
     if magnitude is not None and not (MIN_MAGNITUDE <= magnitude <= MAX_MAGNITUDE):
         raise HTTPException(
             status_code=400,
@@ -63,6 +71,7 @@ def _build_scenario(
 
     return dataclasses.replace(
         base,
+        label=custom_label,
         magnitude=magnitude if magnitude is not None else base.magnitude,
         depth_km=depth_km if depth_km is not None else base.depth_km,
         epicenter_lat=lat,
