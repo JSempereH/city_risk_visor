@@ -115,7 +115,12 @@ function getLineWidth(feature: GeoJSON.Feature): number {
 
 function epicenterLayer(): ScatterplotLayer | null {
   if (state.mode !== "risk" || !state.scenarioSummary) return null;
-  const { epicenter_lat, epicenter_lon } = state.scenarioSummary.scenario;
+  // Prefer a picked-or-typed-but-not-yet-applied epicenter (see
+  // state.ts::scenarioDraft) over the last *applied* one, so clicking
+  // the map moves the pin immediately instead of only after the
+  // scenario re-runs and a new summary comes back.
+  const epicenter_lat = state.scenarioDraft.epicenter_lat ?? state.scenarioSummary.scenario.epicenter_lat;
+  const epicenter_lon = state.scenarioDraft.epicenter_lon ?? state.scenarioSummary.scenario.epicenter_lon;
   return new ScatterplotLayer({
     id: "epicenter",
     data: [{ position: [epicenter_lon, epicenter_lat] }],

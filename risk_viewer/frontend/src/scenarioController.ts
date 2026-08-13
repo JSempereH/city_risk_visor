@@ -137,17 +137,25 @@ export function pickEpicenter(lat: number, lon: number): void {
   state.scenarioError = null;
   setEpicenterPicking(false);
   renderCurrentScenarioPanel();
+  // Move the map's epicenter marker to the picked point right away,
+  // rather than leaving it at the last *applied* location until the
+  // scenario re-runs (see mapLayers.ts::epicenterLayer()).
+  renderLayer();
 }
 
 function updateScenarioDraft(patch: Partial<ScenarioOverrides>): void {
   state.scenarioDraft = { ...state.scenarioDraft, ...patch };
   state.scenarioError = null;
-  // Not re-rendering here: the input the user is actively typing in
-  // already shows what they typed (it's the DOM's own value), and a
-  // re-render on every keystroke would steal focus/cursor position from
-  // it for no benefit. The draft only needs to be *readable* for the
-  // next render some other action triggers (picking a point, toggling
-  // pick mode, etc.), not to itself cause one.
+  // Not re-rendering the scenario panel here: the input the user is
+  // actively typing in already shows what they typed (it's the DOM's
+  // own value), and a re-render on every keystroke would steal focus/
+  // cursor position from it for no benefit. The draft only needs to be
+  // *readable* for the next panel render some other action triggers
+  // (picking a point, toggling pick mode, etc.), not to itself cause one.
+  //
+  // The map is a different story: it has no focus/cursor state to lose,
+  // so a typed epicenter_lat/epicenter_lon can move the pin live too.
+  if ("epicenter_lat" in patch || "epicenter_lon" in patch) renderLayer();
 }
 
 export function hideScenarioPanelForExposureMode(): void {
