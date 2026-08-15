@@ -1,3 +1,10 @@
+# Reproducing per-city/neighborhood exposure data
+
+- [La Guaira, Venezuela](#reproducing-la-guairas-exposure-data)
+- [Lomas del Centinela, Zapopan (Mexico)](#lomas-del-centinela-zapopan-mexico)
+
+---
+
 # Reproducing La Guaira's exposure data
 
 **Currently pulled out of the live app** (2026-08-11: `app/cities.py`
@@ -133,3 +140,245 @@ under-detection of non-collapse damage).
 PSHA for La Guaira, via GEM's South America (SAM) regional model
 (confirmed to cover Venezuela): only the deterministic scenario is
 wired up so far.
+
+---
+
+# Lomas del Centinela, Zapopan (Mexico)
+
+**Not yet in the live app.** This is only the footprint-acquisition step
+(building geometry, no attributes). `app/cities.py` has no entry for
+this neighborhood, and `all_cities_combined.gpkg` is not updated by
+this script directly, it writes a `.new.gpkg` for review. See
+`docs/adding_a_city.md`'s checklist for everything still needed
+(floor counts, structural typology, deterministic scenario, PSHA)
+before this can be added for real.
+
+This is a neighborhood, not a whole city (~8,000 residents, 2020
+census), added because that's what was asked for, not because the
+pipeline requires city-sized units. `city="lomas_centinela"` is just
+this codebase's usual join key for a geographic group of buildings.
+
+## One-shot
+
+```bash
+cd backend
+uv run python scripts/exposure/build_lomas_centinela.py
+```
+
+Downloads and caches raw sources under `scripts/exposure/_raw/lomas_centinela/`
+(gitignored, ~50MB), takes a few minutes on a modest connection (two
+Microsoft footprint tiles, ~17MB and ~28MB). Writes
+`app/data/exposure/all_cities_combined.new.gpkg`; review the diff before
+replacing the vendored file. Re-running is cheap: every download is
+cached by filename and skipped if already present.
+
+## Boundary: IIEG "Colonias INE 2024"
+
+OpenStreetMap has no polygon for this neighborhood, only an unbounded
+`place=neighbourhood` point, so an official boundary was needed to know
+which buildings belong to it at all.
+
+| Data | Source | License |
+|---|---|---|
+| Colonia boundary polygon | IIEG (Instituto de Información Estadística y Geográfica de Jalisco), "Colonias INE 2024" (`https://iieg.gob.mx/ns/wp-content/uploads/2024/11/SHAPEColonias20202024.zip`). 6,624 colonia polygons statewide, built on INE electoral geography validated against INEGI's 2020 census. | Public, IIEG open data portal |
+
+`GEOCOL=120018` is "Lomas del Centinela", municipio Zapopan, CP 45180,
+POBTOT (2020 census population) 8,038, VIVTOT (total dwellings) 2,339.
+It sits in a zoom-9 Bing quadkey pair (`023301102`/`023301103`), i.e. the
+polygon straddles two Microsoft footprint tiles, both are fetched.
+
+The same layer carries the full 2020 census record per colonia
+(household size, floor/wall material, electricity/water/drainage
+access, etc.), not used by the build script (it's colonia-level, not
+per-building), but worth pulling later as context for the structural
+typology and code-quality work `docs/adding_a_city.md` still requires.
+
+## Footprints: Microsoft Global ML Building Footprints
+
+| Data | Source | License |
+|---|---|---|
+| Building footprint geometry | Microsoft Global ML Building Footprints, Mexico region, quadkeys `023301102`+`023301103` (`https://github.com/microsoft/GlobalMLBuildingFootprints`). Satellite-derived, ML-detected polygons. | ODbL 1.0 |
+
+2,215 footprints fall inside the official boundary (of 3,804 found near
+it across both tiles), all valid single `Polygon` geometry, no slivers,
+median footprint area ~65 m². Close to VIVTOT=2,339 from the same IIEG
+census record, a reasonable order-of-magnitude cross-check for a
+neighborhood of mostly small detached houses (a building and a dwelling
+aren't the same thing, so exact equality isn't expected).
+
+No height or floor count: Microsoft's `height` field is its own `-1.0`
+"unknown" sentinel for every building in this tile (no LiDAR/stereo
+coverage here), left as a real `NaN` in the output, not fabricated.
+
+## Sources evaluated and not used
+
+- **OpenStreetMap.** This codebase's usual first candidate
+  (`build_venezuela.py` uses it for `building_levels`), checked first
+  here too via a live Overpass query
+  (`_check_osm_coverage()`, run automatically by the build script,
+  informational only). Result as of this writing: 0 OSM-tagged
+  buildings with a centroid inside the official boundary polygon. This
+  isn't a sparse-attributes problem like La Guaira's OSM data, it's a
+  coverage problem: OSM has essentially no traced buildings for this
+  specific colonia. (A wider, padded bounding box around the
+  neighborhood's OSM point does have hundreds of tagged buildings, they
+  just belong to neighboring colonias, e.g. "Bosques del Centinela",
+  "Colinas del Centinela", which are separate IIEG polygons.)
+- **Google Open Buildings v3.** Confirmed to cover Mexico, but its only
+  public tiling granularity is S2 level 4, and the cell covering this
+  area is a ~1.7GB single download (tested: ~400KB/s from this
+  environment, so over an hour) for one small neighborhood. Not worth
+  it given Microsoft's tiles already gave clean, census-consistent
+  coverage at ~46MB combined. Worth revisiting if Microsoft's coverage
+  ever looks insufficient somewhere else in this area.
+
+## Floor counts / height: a city-wide estimate, not measured
+
+```bash
+cd backend
+uv run python scripts/exposure/estimate_lomas_centinela_heights.py
+```
+
+Run after `build_lomas_centinela.py`. Fills `n_floors`/`height` for
+every building in this neighborhood with a single estimate (1 floor,
+3.0m, using `app/data_loader.py`'s own `METRES_PER_FLOOR` convention),
+not a per-building measurement, since no cheap per-building source
+panned out (see below). Mockup-level, good enough to render on the map
+and drive a scenario, not a survey.
+
+Two real per-building sources were investigated and rejected:
+
+- **Zapopan's municipal cadastre.** No public REST/WFS/API endpoint
+  found for construction-level data; the municipal digital map
+  (`geomatica.zapopan.gob.mx/mxsig/`) is a static viewer with no
+  discoverable service URL, and cadastral records require an in-person
+  request at the municipal office. Not automatable.
+- **GlobalBuildingAtlas (TUM), see the height-source discussion in the
+  planning conversation for this neighborhood.** Confirmed to cover this
+  area (5°×5° tile `LoD1/northamerica/w105_n25_w100_n20.json` on
+  Hugging Face, `zhu-xlab/GBA.LoD1`), but that tile is 1.38GB (the
+  lighter-looking `Polygon/` GeoJSON equivalent is actually *larger*,
+  7.5GB, uncompressed coordinates). Same call as Google Open Buildings
+  in the section above: not worth a 1+GB download for 2,215 buildings
+  when the neighborhood is expected to be uniformly low-rise anyway
+  (see evidence below). Worth revisiting if a real per-building height
+  source is ever needed here.
+
+What justifies the 1-floor estimate instead, real evidence, but
+neighborhood-wide, not per-building (see
+`estimate_lomas_centinela_heights.py`'s docstring for the full
+reasoning):
+
+- IIEG's 2020 census for this colonia: 2,339 total dwellings against
+  2,215 building footprints, a roughly 1:1 ratio consistent with
+  single-family, single-unit-per-building construction.
+- Zapopan municipal records: a COMUR resolution regularizing an
+  irregular lot in this area, and a 2026 paving/water-infrastructure
+  project description for ~23,000 residents, both consistent with a
+  self-built, incrementally regularized "colonia popular" (typically
+  low-rise), not a planned mid/high-rise development.
+- A wide-area satellite check (ArcGIS World Imagery, no API key, the
+  script re-fetches and saves this to
+  `_raw/lomas_centinela/reference_satellite.png` as reviewable
+  evidence): organic, non-gridded street layout, small densely packed
+  rooflines, no tall-building silhouette anywhere in the neighborhood.
+  One visual pass over the whole colonia, not a per-building review.
+
+## Height refinement: GlobalBuildingAtlas (TUM), where it actually matched
+
+```bash
+cd backend
+uv run python scripts/exposure/apply_gba_heights_lomas_centinela.py
+```
+
+Run after `estimate_lomas_centinela_heights.py`. Revisits the "not worth
+a 1+GB download" call above: the user pushed back on it, so this was
+tested for real rather than left as an assumption.
+
+- The lighter route, GBA's own height *raster* (`GBA.Height`, would
+  support cheap windowed reads the same way this project already
+  streams Vs30/WorldPop via GDAL `/vsicurl/`, see
+  `scripts/geodata/build_vs30.py`) is hosted on mediaTUM behind an
+  always-on bot-detection challenge (Anubis) that blocks all scripted
+  access, confirmed by direct testing (curl with a real browser
+  User-Agent still gets the JS challenge page), not assumed.
+- Before committing to the full `GBA.LoD1` download, a range-request
+  shortcut was tested: sampling small byte windows at 9+ offsets across
+  the 1.38GB tile and decoding the Google Plus Codes embedded in the
+  building IDs found there. Result: entries are geographically clustered
+  only in small local batches, scattered with no global sort order
+  across the file, so there's no way to isolate one neighborhood's data
+  with a partial download.
+- Downloaded the full tile (`LoD1/northamerica/w105_n25_w100_n20.json`,
+  1,377,026,940 bytes, cached under `_raw/lomas_centinela/`) and
+  streamed it in 64MB chunks with a regex over `"google<PlusCode>MEX":
+  {"height": ..., "var": ...}` entries (no full JSON parse of a 1.4GB
+  single-object file), decoding each Plus Code to a coordinate directly
+  from the building ID, no separate (7.5GB) geometry file needed.
+  `osm...`-keyed entries were skipped entirely: this neighborhood's own
+  live OSM check (above) found ~0 real coverage here, and an OSM ID
+  alone carries no coordinate the way a Plus Code does.
+- First attempt yielded only 27 of 2,215 footprints (1.2%) matched
+  within 20m, which turned out to be a real bug, not real sparse
+  coverage: the Plus Code decoder only used the 8-character prefix
+  (a ~278m x 260m cell), silently dropping the 2 digits right after the
+  `+` that get a Plus Code to its commonly-cited ~14m x 13m accuracy.
+  Caught by the user comparing the map against a real street-level
+  photo of the neighborhood showing several 2-story buildings, which
+  didn't square with an almost-empty match rate. A ~270m-uncertain
+  point matched against a 20m radius mostly succeeds by chance (~1.8%
+  predicted, 1.2% observed), not by real correspondence. Fixed by
+  decoding 10 significant digits instead of 8, and widening the match
+  radius to 25m (the 10-digit cell's diagonal, ~19m, plus digitisation
+  slack). See `apply_gba_heights_lomas_centinela.py`'s
+  `_decode_pluscode()` docstring for the full account.
+- Real yield after the fix: 16,126,425 Google-sourced entries scanned
+  tile-wide, 49,552 within a padded box around the neighborhood,
+  **2,132 of 2,215 footprints (96.3%)** matched a GBA point within 25m.
+  Those 2,132 got their `n_floors`/`height` overwritten with the real
+  GBA value (mean reported variance 0.92 m²); the other 83 (mostly at
+  the neighborhood's edges, outside the padded box or with no plausible
+  match) keep the uniform 1-floor/3.0m estimate.
+- First distribution (with the 3.0m project-wide `METRES_PER_FLOOR`):
+  2,122 buildings at 1 floor, 92 at 2 floors, 1 at 3 floors. Flagged as
+  suspicious: a real street-level photo of the neighborhood showed
+  several clearly 2-story buildings on a single block, hard to square
+  with only 4.2% of the whole neighborhood at 2+ floors.
+- **Lowered `METRES_PER_FLOOR` to 2.5m for this neighborhood only**
+  (both `estimate_lomas_centinela_heights.py` and
+  `apply_gba_heights_lomas_centinela.py`, not the project-wide 3.0m
+  default in `app/data_loader.py`, which stays as-is for the other 3
+  cities). Not a fabricated number: Mexico's own building code (RCDF,
+  Reglamento de Construcciones para la Ciudad de México, Art. 106)
+  cites 2.30m as the minimum habitable height and 2.40-2.60m as the
+  recommended comfort range for social/mid-level housing, consistent
+  with this neighborhood's own `pre_code` assumption (see
+  `assign_lomas_centinela_typology.py`).
+- Resulting distribution after the fix: **1,944 at 1 floor, 262 at 2
+  floors (11.8%), 9 at 3 floors** (height range 1.5-7.7m, median
+  2.5m). A meaningfully better match to the photographic evidence than
+  the 3.0m-divisor result, though not independently validated against
+  a full ground survey, still a mockup-level estimate.
+
+**License**: `GBA.Height`/`GBA.LoD1` is CC BY-NC 4.0 (non-commercial),
+confirmed from the dataset's own GitHub README. Not yet checked against
+this project's actual intended use, do that before relying on this for
+more than a mockup.
+
+**Accuracy caveat**: the GlobalBuildingAtlas paper (Arxiv 2506.04106)
+reports height RMSE of 1.5-8.9m across continents, 5.5m global average,
+a margin comparable to the very difference this is meant to resolve (a
+1-story house is ~3m, a 2-story one ~6m). Real per-building variation
+for the 27 matched buildings, not a guaranteed accuracy improvement over
+the uniform estimate it replaced.
+
+## Not yet done
+
+Per `docs/adding_a_city.md`'s checklist: structural typology (no
+labeled sample exists for this neighborhood), deterministic scenario
+and PSHA source model for Mexico/Jalisco (candidates identified during
+planning: GEM's Mexico national PSHA model MEX v2025.0.0, CC BY-NC 4.0,
+license needs checking before use; Jalisco is CFE seismic zone D,
+Rivera/Cocos subduction plus local crustal faults are the controlling
+sources, still needs a single cited deterministic scenario written up
+in `app/hazard/scenario.py`'s style). No `CityProfile` entry exists yet.
