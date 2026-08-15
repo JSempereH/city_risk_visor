@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app import data_loader
-from app.colors import categorical_legend
+from app.colors import CATEGORICAL_PALETTE, STRUCTURAL_SYSTEM_PALETTE, categorical_legend
 from app.data_loader import UNLABELED
 from app.layers import LAYER_REGISTRY
 from app.layers.registry import LayerSpec
@@ -52,5 +52,10 @@ def layer_legend(layer_id: str) -> dict[str, dict[str, str]]:
         if attribute.kind != "categorical":
             continue
         values = data_loader.attribute_domain(attribute.name)
-        legend[attribute.name] = categorical_legend(values, unlabeled_value=UNLABELED)
+        # Its own palette, not the shared default (see colors.py's
+        # module docstring): reusing the same hues for structural
+        # system and roof material made a color mean different things
+        # depending on which attribute was active.
+        palette = STRUCTURAL_SYSTEM_PALETTE if attribute.name == "structural_system_class" else CATEGORICAL_PALETTE
+        legend[attribute.name] = categorical_legend(values, unlabeled_value=UNLABELED, palette=palette)
     return legend
