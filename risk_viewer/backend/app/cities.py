@@ -130,6 +130,34 @@ CITIES: dict[str, CityProfile] = {
         reference_vs30=800.0,
         investigation_time_years=1.0,
     ),
+    "lomas_centinela": CityProfile(
+        city="lomas_centinela",
+        scenario_label="Mw 8.1, 3 June 1932 Jalisco-Colima subduction mainshock",
+        magnitude=8.1,
+        depth_km=60.0,
+        epicenter_lat=19.5,
+        epicenter_lon=-104.25,
+        tectonic_regime="interface",
+        deterministic_source_note=(
+            "Real historical event, not an illustrative magnitude: the Mw 8.1 (Ms 8.2) "
+            "3 June 1932 mainshock, per Singh, Ponce & Nishenko (1985), 'The great Jalisco, "
+            "Mexico, earthquakes of 1932: Subduction of the Rivera plate', BSSA 75(5), the "
+            "standard anchor event for Jalisco seismic hazard (CENAPRED/SSN); much of its "
+            "historical damage and casualties concentrated in Guadalajara despite the ~170 km "
+            "distance, attributed to local soil response. Illustrative point epicenter, not "
+            "the paper's full rupture geometry; ztor_km assumed shallower than the 60 km "
+            "hypocentral depth for a large interface rupture, same convention as san_jose. "
+            "A closer but smaller-magnitude alternative controlling source exists locally: "
+            "SSN/UNAM attribute Zapopan's own highest-in-ZMG seismicity to the Tesistan and "
+            "Rio Santiago crustal faults, not modeled here."
+        ),
+        ztor_km=20.0,
+        # No PSHA source model integrated yet (candidate: GEM's Mexico national model,
+        # MEX v2025.0.0, CC BY-NC 4.0, license not yet checked for this use), so
+        # reference_vs30 and investigation_time_years stay None, a deterministic-only
+        # CityProfile, same as this module's docstring says is valid.
+        typology_beta_generic=0.6,
+    ),
     # la_guaira (Venezuela) was built and wired up 2026-08-11: real
     # footprints, real observed damage, a real deterministic scenario,
     # but pulled back out for now over data-quality concerns (the
