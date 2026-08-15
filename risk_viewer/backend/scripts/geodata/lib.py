@@ -12,7 +12,7 @@ BACKEND_DIR = SCRIPTS_DIR.parents[1]
 VS30_DATA_DIR = BACKEND_DIR / "app" / "data" / "vs30"
 POPULATION_DATA_DIR = BACKEND_DIR / "app" / "data" / "population"
 
-CITIES = ("san_jose", "guatemala", "santo_domingo", "la_guaira")
+CITIES = ("san_jose", "guatemala", "santo_domingo", "la_guaira", "lomas_centinela")
 
 # Building-extent margin added on every side before cropping a raster to
 # a city (degrees). Matches the margin already baked into the vendored
@@ -24,6 +24,7 @@ ISO3_BY_CITY = {
     "guatemala": "gtm",
     "santo_domingo": "dom",
     "la_guaira": "ven",
+    "lomas_centinela": "mex",
 }
 
 # Buildings with no recorded floor count (see app/data_loader.py) still
