@@ -1,18 +1,29 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app import typology_hypothesis
 from app.main import app
 from app.routers import scenarios as scenarios_router
 
 client = TestClient(app)
 
+TEST_CITY = "guatemala"
+
 
 def test_is_precomputable_request():
-    assert scenarios_router._is_precomputable_request(None, None, None, None) is True
-    assert scenarios_router._is_precomputable_request(7.0, None, None, None) is False
-    assert scenarios_router._is_precomputable_request(None, 10.0, None, None) is False
-    assert scenarios_router._is_precomputable_request(None, None, 9.9, None) is False
-    assert scenarios_router._is_precomputable_request(None, None, None, -84.0) is False
+    assert scenarios_router._is_precomputable_request(TEST_CITY, None, None, None, None) is True
+    assert scenarios_router._is_precomputable_request(TEST_CITY, 7.0, None, None, None) is False
+    assert scenarios_router._is_precomputable_request(TEST_CITY, None, 10.0, None, None) is False
+    assert scenarios_router._is_precomputable_request(TEST_CITY, None, None, 9.9, None) is False
+    assert scenarios_router._is_precomputable_request(TEST_CITY, None, None, None, -84.0) is False
+
+
+def test_is_precomputable_request_false_under_active_hypothesis():
+    typology_hypothesis.set_hypothesis(TEST_CITY, {"M": 1.0})
+    try:
+        assert scenarios_router._is_precomputable_request(TEST_CITY, None, None, None, None) is False
+    finally:
+        typology_hypothesis.clear_hypothesis(TEST_CITY)
 
 
 def test_scenario_summary_uses_precomputed_shortcut(monkeypatch):
@@ -50,7 +61,7 @@ def test_list_scenarios():
     response = client.get("/api/scenarios")
     assert response.status_code == 200
     cities = {s["city"] for s in response.json()}
-    assert cities == {"guatemala", "san_jose", "santo_domingo"}
+    assert cities == {"guatemala", "san_jose", "santo_domingo", "lomas_centinela"}
 
 
 def test_unknown_city_scenario_404():

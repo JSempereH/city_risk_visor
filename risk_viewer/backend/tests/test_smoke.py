@@ -28,7 +28,7 @@ def test_layer_data_returns_feature_collection_with_unlabeled_bucket():
     assert response.status_code == 200
     body = response.json()
     assert body["type"] == "FeatureCollection"
-    assert len(body["features"]) == 2811
+    assert len(body["features"]) == 5026
     classes = {f["properties"]["structural_system_class"] for f in body["features"]}
     assert "unlabeled" in classes
 
