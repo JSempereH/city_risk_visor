@@ -31,7 +31,7 @@ export function renderBuildingSummary(container: HTMLElement, building: Building
     <table class="building-summary">
       <tr><th>City</th><td>${building.city}</td></tr>
       <tr><th>Floors</th><td>${building.n_floors ?? "N/A"}</td></tr>
-      <tr><th>Height (m)</th><td>${building.height ?? "N/A"}</td></tr>
+      <tr><th>Height (m)</th><td>${building.height === null ? "N/A" : building.height.toFixed(1)}</td></tr>
       <tr><th>Structural system</th><td>${structuralSystemCell(building)}</td></tr>
     </table>
   `;

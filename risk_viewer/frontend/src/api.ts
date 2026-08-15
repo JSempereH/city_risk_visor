@@ -121,24 +121,42 @@ export type Vulnerability = VulnerabilityAvailable | VulnerabilityUnavailable;
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8001";
 
+async function extractErrorDetail(response: Response, path: string): Promise<string> {
+  // FastAPI's HTTPException puts the actual reason (e.g. "magnitude
+  // must be between 4.5 and 9.0") in the response body's `detail`
+  // field, not the status line -- surface that instead of just the
+  // status code, or an invalid input silently reads as "backend is
+  // broken" instead of "try a different value".
+  let detail: string | undefined;
+  try {
+    const body = await response.json();
+    detail = typeof body?.detail === "string" ? body.detail : undefined;
+  } catch {
+    // Response wasn't JSON (e.g. a proxy error page); fall through to
+    // the generic message below.
+  }
+  return detail ?? `Request to ${path} failed: ${response.status}`;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`);
-  if (!response.ok) {
-    // FastAPI's HTTPException puts the actual reason (e.g. "magnitude
-    // must be between 4.5 and 9.0") in the response body's `detail`
-    // field, not the status line -- surface that instead of just the
-    // status code, or an invalid input silently reads as "backend is
-    // broken" instead of "try a different value".
-    let detail: string | undefined;
-    try {
-      const body = await response.json();
-      detail = typeof body?.detail === "string" ? body.detail : undefined;
-    } catch {
-      // Response wasn't JSON (e.g. a proxy error page); fall through to
-      // the generic message below.
-    }
-    throw new Error(detail ?? `Request to ${path} failed: ${response.status}`);
-  }
+  if (!response.ok) throw new Error(await extractErrorDetail(response, path));
+  return response.json() as Promise<T>;
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await extractErrorDetail(response, path));
+  return response.json() as Promise<T>;
+}
+
+async function deleteRequest<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(await extractErrorDetail(response, path));
   return response.json() as Promise<T>;
 }
 
@@ -304,6 +322,40 @@ export interface Disaggregation {
 export function fetchDisaggregation(city: string, returnPeriodYears: number): Promise<Disaggregation> {
   return getJson<Disaggregation>(
     `/api/scenarios/${encodeURIComponent(city)}/disaggregation?return_period_years=${returnPeriodYears}`,
+  );
+}
+
+// Expert-specified structural-typology hypothesis for a city (see
+// backend/app/typology_hypothesis.py): overrides every building's
+// structural_system_class for that city's risk computation, sampled to
+// match the given proportions, until cleared.
+export interface TypologyHypothesis {
+  city: string;
+  proportions: Record<string, number>;
+  seed: number;
+  normalized_entropy: number;
+  typology_beta: number;
+  fingerprint: string;
+}
+
+export function fetchTypologyHypothesis(city: string): Promise<TypologyHypothesis | null> {
+  return getJson<TypologyHypothesis | null>(`/api/cities/${encodeURIComponent(city)}/typology_hypothesis`);
+}
+
+export function setTypologyHypothesis(
+  city: string,
+  proportions: Record<string, number>,
+  seed = 0,
+): Promise<TypologyHypothesis> {
+  return postJson<TypologyHypothesis>(`/api/cities/${encodeURIComponent(city)}/typology_hypothesis`, {
+    proportions,
+    seed,
+  });
+}
+
+export function clearTypologyHypothesis(city: string): Promise<{ city: string; cleared: boolean }> {
+  return deleteRequest<{ city: string; cleared: boolean }>(
+    `/api/cities/${encodeURIComponent(city)}/typology_hypothesis`,
   );
 }
 

@@ -1,8 +1,11 @@
 import {
+  clearTypologyHypothesis,
   fetchDisaggregation,
   fetchHazardCurve,
   fetchScenarioRisk,
   fetchScenarioSummary,
+  fetchTypologyHypothesis,
+  setTypologyHypothesis,
   type Disaggregation,
   type HazardCurve,
   type ScenarioOverrides,
@@ -27,17 +30,35 @@ const scenarioControlCallbacks = {
   onSwitchToDeterministic: resetScenarioOverrides,
 };
 
+const typologyHypothesisControlCallbacks = {
+  onApply: applyTypologyHypothesis,
+  onClear: clearActiveTypologyHypothesis,
+  onDraftChange: updateTypologyHypothesisDraft,
+};
+
 function renderCurrentScenarioPanel(): void {
   const panel = document.getElementById("scenario-panel");
   if (!panel || !state.scenarioSummary || !state.city) return;
-  renderScenarioPanel(panel, state.scenarioSummary, state.hazardCurve, state.disaggregation, {
-    overrides: state.scenarioOverrides,
-    draft: state.scenarioDraft,
-    error: state.scenarioError,
-    pickingEpicenter: state.pickingEpicenter,
-    psha: pshaInfoForCity(state.city),
-    ...scenarioControlCallbacks,
-  });
+  renderScenarioPanel(
+    panel,
+    state.scenarioSummary,
+    state.hazardCurve,
+    state.disaggregation,
+    {
+      overrides: state.scenarioOverrides,
+      draft: state.scenarioDraft,
+      error: state.scenarioError,
+      pickingEpicenter: state.pickingEpicenter,
+      psha: pshaInfoForCity(state.city),
+      ...scenarioControlCallbacks,
+    },
+    {
+      hypothesis: state.typologyHypothesis,
+      draft: state.typologyHypothesisDraft,
+      error: state.typologyHypothesisError,
+      ...typologyHypothesisControlCallbacks,
+    },
+  );
 }
 
 export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {}): void {
@@ -53,8 +74,14 @@ export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {})
     fetchScenarioSummary(city, overrides),
     hazardCurvePromise,
     disaggregationPromise,
+    // Re-synced on every load (city switch, override apply/reset, or a
+    // hypothesis apply/clear itself), since the hypothesis is process-
+    // lifetime backend state per city, not something this frontend owns:
+    // see backend/app/typology_hypothesis.py::set_hypothesis()'s
+    // docstring.
+    fetchTypologyHypothesis(city),
   ])
-    .then(([risk, summary, hazardCurve, disaggregation]) => {
+    .then(([risk, summary, hazardCurve, disaggregation, typologyHypothesis]) => {
       state.riskData = risk;
       state.scenarioSummary = summary;
       state.scenarioOverrides = overrides;
@@ -66,6 +93,9 @@ export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {})
       state.scenarioError = null;
       state.hazardCurve = hazardCurve;
       state.disaggregation = disaggregation;
+      state.typologyHypothesis = typologyHypothesis;
+      state.typologyHypothesisDraft = {};
+      state.typologyHypothesisError = null;
       state.riskNumericRange = {};
       for (const attribute of RISK_ATTRIBUTES) {
         if (attribute.kind === "sequential") {
@@ -91,6 +121,49 @@ export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {})
         showRiskLoading(`Failed to load scenario: ${message}`);
       }
     });
+}
+
+function applyTypologyHypothesis(proportions: Record<string, number>): void {
+  if (!state.city) return;
+  const city = state.city;
+  setTypologyHypothesis(city, proportions)
+    .then(() => {
+      // Re-runs the scenario against the newly active hypothesis (the
+      // whole point, see typologyHypothesisPanel.ts's hint text): the
+      // backend has already stored it, this just fetches the updated
+      // result and re-syncs state.typologyHypothesis from the same
+      // fetchTypologyHypothesis() call loadRiskForCity always makes.
+      loadRiskForCity(city, state.scenarioOverrides);
+    })
+    .catch((error: unknown) => {
+      // Deliberately does not touch state.typologyHypothesis or reload
+      // the scenario: an invalid hypothesis (e.g. proportions not
+      // summing to 1) was never accepted by the backend, so the
+      // previous (still valid) result and draft stay in place, same
+      // pattern as loadRiskForCity's own error handling above.
+      state.typologyHypothesisError = error instanceof Error ? error.message : String(error);
+      renderCurrentScenarioPanel();
+    });
+}
+
+function clearActiveTypologyHypothesis(): void {
+  if (!state.city) return;
+  const city = state.city;
+  clearTypologyHypothesis(city)
+    .then(() => loadRiskForCity(city, state.scenarioOverrides))
+    .catch((error: unknown) => {
+      state.typologyHypothesisError = error instanceof Error ? error.message : String(error);
+      renderCurrentScenarioPanel();
+    });
+}
+
+function updateTypologyHypothesisDraft(patch: Record<string, string>): void {
+  state.typologyHypothesisDraft = { ...state.typologyHypothesisDraft, ...patch };
+  state.typologyHypothesisError = null;
+  // Not re-rendering here, same reasoning as updateScenarioDraft()
+  // below: the field being typed into already shows what was typed, and
+  // typologyHypothesisPanel.ts updates its own running-total note
+  // directly rather than through a full re-render.
 }
 
 export function applyScenarioOverrides(overrides: ScenarioOverrides): void {

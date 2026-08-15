@@ -4,19 +4,20 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import { GeoJsonLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { ESTIMATED_STROKE_COLOR, hexToRgb, sequentialColor, UNLABELED_COLOR } from "./colors";
 import { formatTooltip, formatRiskTooltip, renderCategoricalLegend, renderSequentialLegend } from "./ui";
-import { activeData, activeLegendFor, activeNumericRange, state } from "./state";
+import { activeData, activeLegendFor, activeNumericRange, isClampedAbove, state } from "./state";
 import { renderTypologyQuality } from "./typologyQualityPanel";
 
-// CARTO Positron: a light, near-grayscale basemap built from OSM data,
-// designed for data overlays (unlike a desaturation filter forced onto
-// the standard colorful OSM tiles, which reads as muddy). Free, no API
-// key needed. https://github.com/CartoDB/basemap-styles
+// CARTO Dark Matter: the dark counterpart to Positron, same OSM-derived
+// basemap family designed for data overlays (unlike a desaturation
+// filter forced onto the standard colorful OSM tiles, which reads as
+// muddy). Free, no API key needed, same terms as the light style it
+// replaces. https://github.com/CartoDB/basemap-styles
 const OSM_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     osm: {
       type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"],
+      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"],
       tileSize: 256,
       attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
     },
@@ -103,9 +104,12 @@ function getFillColor(feature: GeoJSON.Feature): [number, number, number, number
 }
 
 function getLineColor(feature: GeoJSON.Feature): [number, number, number, number] {
-  if (isSelected(feature)) return [11, 11, 11, 255];
+  if (isSelected(feature)) return [255, 255, 255, 255];
   if (isEstimatedStructuralSystem(feature)) return [...hexToRgb(ESTIMATED_STROKE_COLOR), 220];
-  return [40, 40, 40, 180];
+  // A light hairline, not a dark one: against the dark basemap this is
+  // what keeps every footprint reading as a distinct shape, especially
+  // the darkest damage-state fills that would otherwise blend into it.
+  return [235, 235, 235, 90];
 }
 
 function getLineWidth(feature: GeoJSON.Feature): number {
@@ -153,7 +157,8 @@ export function renderLegend(): void {
     renderCategoricalLegend(container, attribute.label, activeLegendFor(attribute.name));
   } else {
     const [min, max] = activeNumericRange(attribute.name);
-    renderSequentialLegend(container, attribute.label, min, max);
+    const clampedAbove = isClampedAbove(activeData(), attribute.name, max);
+    renderSequentialLegend(container, attribute.label, min, max, clampedAbove);
   }
 
   const qualityContainer = document.getElementById("typology-quality");

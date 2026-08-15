@@ -64,22 +64,43 @@ export function sequentialLegendSteps(min: number, max: number): { value: number
 }
 
 // Damage state is an ordinal severity scale (none < slight < moderate <
-// extensive < complete), encoded as a single-hue, monotone-lightness ramp
-// per the dataviz method's ordinal rule, rather than a multi-hue
-// good-to-critical status scale. Checked directly: a good (green) to
-// critical (red) status scale puts the two most consequential states
-// (slight vs. complete) at only deltaE 4.1 under simulated deuteranopia,
-// below the method's floor. A single hue avoids relying on hue
-// discrimination at all, so severity still reads correctly under any type
-// of color vision deficiency. "none" is a neutral surface tone rather than
-// the ramp's lightest step so it reads as "nothing to show" instead of
-// "mild damage".
+// extensive < complete). Originally a single dark-red hue (still the
+// method's own default for an ordinal ramp — a good/critical multi-hue
+// status scale put "slight" vs. "complete" at only deltaE 4.1 under
+// simulated deuteranopia, below the floor). Replaced with a violet ->
+// magenta -> coral -> peach progression sampled directly from
+// github.com/RELNO/gridnberg's own slope legend (gentle -> steep), a
+// perceptual multi-hue ramp in the same family as viridis/magma: hue
+// shifts alongside lightness, but lightness alone still carries the
+// order (monotone light->dark, checked below), so it degrades to the
+// single-hue case under any color-vision deficiency instead of relying
+// on hue. Exact stops sampled off that reference image's own gradient
+// bar (not eyeballed/invented), then nudged one step lighter at the
+// dark end to clear this app's contrast floor:
+// `validate_palette.py "#722877,#b82d70,#da635f,#dd9d7a" --mode dark
+// --surface "#0a0c0f" --ordinal` -> ALL CHECKS PASS (hue spread 28,
+// under the method's 40 ceiling for "one perceptual family").
+// "none" is a neutral surface tone rather than the ramp's own lightest
+// step so it reads as "nothing to show" instead of "mild damage".
 export const DAMAGE_STATE_COLORS: Record<string, string> = {
-  none: "#e5e3dd",
-  slight: "#ed756e",
-  moderate: "#b64340",
-  extensive: "#800613",
-  complete: "#520000",
+  none: "#6b6f76",
+  slight: "#722877",
+  moderate: "#b82d70",
+  extensive: "#da635f",
+  complete: "#dd9d7a",
 };
 
 export const DAMAGE_STATE_ORDER = ["none", "slight", "moderate", "extensive", "complete"] as const;
+
+// WCAG relative luminance, used only to pick readable text for a pill/
+// badge whose background is a data color (e.g. a damage-state swatch)
+// rather than a fixed design token — not an accessibility contrast
+// guarantee about the background color itself.
+export function readableTextColor(hex: string): string {
+  const [r, g, b] = hexToRgb(hex).map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.4 ? "#0b0b0b" : "#f4f4f4";
+}

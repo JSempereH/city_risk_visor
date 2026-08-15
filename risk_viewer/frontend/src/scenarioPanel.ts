@@ -1,6 +1,7 @@
 import type { Disaggregation, HazardCurve, ScenarioOverrides, ScenarioSummary } from "./api";
 import { renderLineChart } from "./chart";
 import { DAMAGE_STATE_COLORS, DAMAGE_STATE_ORDER } from "./colors";
+import { renderTypologyHypothesisPanel, type TypologyHypothesisControls } from "./typologyHypothesisPanel";
 
 const HAZARD_CURVE_MEAN_COLOR = "#0b5fa8";
 const HAZARD_CURVE_BOUND_COLOR = "#a9c9ea";
@@ -308,6 +309,7 @@ export function renderScenarioPanel(
   hazardCurve: HazardCurve | null,
   disaggregation: Disaggregation | null,
   controls: ScenarioControls,
+  typologyControls: TypologyHypothesisControls,
 ): void {
   container.classList.remove("hidden");
   container.innerHTML = "";
@@ -358,6 +360,10 @@ export function renderScenarioPanel(
   if (summary.scenario.mode === "deterministic") {
     renderCustomScenarioControls(container, summary, controls);
   }
+
+  const typologyHypothesisContainer = document.createElement("div");
+  container.appendChild(typologyHypothesisContainer);
+  renderTypologyHypothesisPanel(typologyHypothesisContainer, typologyControls);
 
   const mc = summary.monte_carlo;
 

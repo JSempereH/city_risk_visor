@@ -1,7 +1,7 @@
 import type { Layer, LayerAttribute } from "./api";
 import { fetchLayers, fetchLayerData, fetchLegend, fetchScenarios } from "./api";
-import { populateAttributeSelect, populateCitySelect } from "./ui";
-import { closeBuildingPanel, selectBuilding } from "./buildingController";
+import { initSegmentedControl, populateAttributeSelect, populateCitySelect, type DropdownHandle } from "./ui";
+import { initBuildingPanelControls, selectBuilding } from "./buildingController";
 import { computeBbox, map, renderLayer, setBuildingClickHandler } from "./mapLayers";
 import {
   hideScenarioPanelForExposureMode,
@@ -14,14 +14,22 @@ import "./style.css";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8001";
 
+// Set once each in bootstrap()/applyAttributeOptionsForMode() (the
+// attribute dropdown is rebuilt with a fresh handle every mode switch,
+// since its option list changes); selectMode()/selectCity() below reach
+// back into these to move the dropdown's displayed value without the
+// user having opened it themselves.
+let attributeDropdown: DropdownHandle | null = null;
+let cityDropdown: DropdownHandle | null = null;
+
 function applyAttributeOptionsForMode(): void {
-  const attributeSelect = document.getElementById("attribute-select") as HTMLSelectElement;
+  const attributeContainer = document.getElementById("attribute-select") as HTMLElement;
   const attributes = activeAttributes();
-  populateAttributeSelect(attributeSelect, attributes, selectAttribute);
+  attributeDropdown = populateAttributeSelect(attributeContainer, attributes, selectAttribute);
   const first = attributes[0];
   if (first) {
     state.attribute = first;
-    attributeSelect.value = first.name;
+    attributeDropdown.setValue(first.name);
   }
 }
 
@@ -41,11 +49,10 @@ function selectMode(mode: Mode): void {
     if (subtitle) subtitle.textContent = "Seismic risk scenario";
     if (hint) hint.textContent = "Adjustable scenario per city, see the panel above for sources and controls.";
     applyAttributeOptionsForMode();
-    const citySelect = document.getElementById("city-select") as HTMLSelectElement;
     const targetCity = state.city ?? state.exposureLayer?.cities[0] ?? null;
     if (targetCity && targetCity !== state.city) {
       state.city = targetCity;
-      citySelect.value = targetCity;
+      cityDropdown?.setValue(targetCity);
     }
     if (state.city) loadRiskForCity(state.city);
   }
@@ -62,14 +69,14 @@ function selectCity(city: string | null): void {
   // rather than silently doing nothing and leaving a stale "Running
   // scenario..." panel up with no data ever loading for it.
   if (state.mode === "risk" && city === null) {
-    const citySelect = document.getElementById("city-select") as HTMLSelectElement | null;
-    if (citySelect && state.city) citySelect.value = state.city;
+    if (state.city) cityDropdown?.setValue(state.city);
     return;
   }
 
   state.city = city;
   setEpicenterPicking(false);
   if (state.mode === "exposure") {
+    if (state.exposureLayer) applyNumericRanges(state.exposureLayer);
     renderLayer();
     const filtered = filteredExposureData();
     if (filtered.features.length > 0) {
@@ -81,7 +88,7 @@ function selectCity(city: string | null): void {
 }
 
 function showError(message: string): void {
-  const controls = document.getElementById("controls");
+  const controls = document.getElementById("controls-body");
   if (controls) {
     const error = document.createElement("p");
     error.className = "error";
@@ -90,7 +97,14 @@ function showError(message: string): void {
   }
 }
 
-function applyNumericRanges(layer: Layer, data: GeoJSON.FeatureCollection): void {
+// Always recomputed from filteredExposureData() (the currently selected
+// city only, or every city if none is selected), never from a raw
+// unfiltered dataset: a shared cross-city domain is exactly what let a
+// taller city's buildings crush a shorter city's (lomas_centinela, almost
+// entirely 1-3 floors) into one indistinguishable color. Must be called
+// again on every city switch, not just once at bootstrap, see selectCity().
+function applyNumericRanges(layer: Layer): void {
+  const data = filteredExposureData();
   for (const attribute of layer.attributes) {
     if (attribute.kind === "sequential") {
       state.numericRange[attribute.name] = numericRangeOf(data, attribute.name);
@@ -128,28 +142,35 @@ async function bootstrap(): Promise<void> {
   ]);
   state.data = data;
   state.legend = legend;
-  applyNumericRanges(layer, data);
+  // state.city must be set before applyNumericRanges() so its
+  // filteredExposureData() call inside actually scopes to this city,
+  // not the (not-yet-set) "no city selected" case.
+  if (initialCity) state.city = initialCity;
+  applyNumericRanges(layer);
 
-  const modeSelect = document.getElementById("mode-select") as HTMLSelectElement;
-  const attributeSelect = document.getElementById("attribute-select") as HTMLSelectElement;
-  const citySelect = document.getElementById("city-select") as HTMLSelectElement;
-
-  modeSelect.addEventListener("change", () => selectMode(modeSelect.value as Mode));
-  populateAttributeSelect(attributeSelect, layer.attributes, selectAttribute);
-  populateCitySelect(citySelect, layer.cities, selectCity);
+  initSegmentedControl(document.getElementById("mode-select") as HTMLElement, (value) => selectMode(value as Mode));
+  attributeDropdown = populateAttributeSelect(
+    document.getElementById("attribute-select") as HTMLElement,
+    layer.attributes,
+    selectAttribute,
+  );
+  cityDropdown = populateCitySelect(document.getElementById("city-select") as HTMLElement, layer.cities, selectCity);
 
   const firstAttribute = layer.attributes[0];
   if (firstAttribute) {
     state.attribute = firstAttribute;
-    attributeSelect.value = firstAttribute.name;
+    attributeDropdown.setValue(firstAttribute.name);
   }
 
   if (initialCity) {
-    state.city = initialCity;
-    citySelect.value = initialCity;
+    cityDropdown.setValue(initialCity);
   }
 
-  document.getElementById("building-panel-close")?.addEventListener("click", closeBuildingPanel);
+  initBuildingPanelControls();
+
+  document.getElementById("controls-toggle")?.addEventListener("click", () => {
+    document.getElementById("controls")?.classList.toggle("collapsed");
+  });
 
   map.on("click", (event) => {
     if (!state.pickingEpicenter) return;
@@ -164,7 +185,12 @@ async function bootstrap(): Promise<void> {
     fetchLayerData(layer.id)
       .then((fullData) => {
         state.data = fullData;
-        applyNumericRanges(layer, fullData);
+        // Recomputed for whichever city is selected right now (still
+        // scoped to it via filteredExposureData() inside), not the full,
+        // all-cities dataset that just arrived: fullData is only needed
+        // so *switching* to another city later has its data ready
+        // client-side, not to widen the domain of the city on screen now.
+        applyNumericRanges(layer);
         if (state.mode === "exposure") renderLayer();
       })
       .catch((error: unknown) => {

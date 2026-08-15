@@ -4,14 +4,89 @@
  * panel, not a general-purpose charting library.
  */
 
+import { hexToRgb } from "./colors";
+
 const CHART_TOKENS = {
-  surface: "#fcfcfb",
-  primaryInk: "#0b0b0b",
-  secondaryInk: "#52514e",
-  mutedInk: "#898781",
-  gridline: "#e1e0d9",
-  baseline: "#c3c2b7",
+  surface: "#171b20",
+  primaryInk: "#edf1f3",
+  secondaryInk: "#9aa5ac",
+  mutedInk: "#7c868d",
+  gridline: "rgba(255, 255, 255, 0.08)",
+  baseline: "rgba(255, 255, 255, 0.2)",
 };
+
+// Relative luminance per WCAG's formula. Used only to decide whether a
+// series color needs a glow (see below), not for any accessibility
+// contrast claim about the series color itself.
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = hexToRgb(hex).map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function hexToHsl(hex: string): [number, number, number] {
+  const [r, g, b] = hexToRgb(hex).map((c) => c / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  const d = max - min;
+  if (d !== 0) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+    }
+    h /= 6;
+  }
+  return [h, s, l];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const hue2rgb = (p: number, q: number, t: number): number => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+  let r: number;
+  let g: number;
+  let b: number;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// A brighter, more saturated step of the same hue — used as a colored
+// glow behind a series that's otherwise too dark to read against the
+// dark chart surface (see relativeLuminance below), instead of a flat
+// white outline: a plain white ring around e.g. DAMAGE_STATE_COLORS'
+// near-black "complete" reads as a stark, unstyled halo, where a glow in
+// the curve's own (lightened) hue reads as the curve lighting itself up.
+function glowColor(hex: string): string {
+  const [h, s, l] = hexToHsl(hex);
+  return hslToHex(h, Math.min(1, s + 0.15), Math.min(0.82, l + 0.4));
+}
 
 export interface ChartSeries {
   label: string;
@@ -184,21 +259,46 @@ export function renderLineChart(container: HTMLElement, options: LineChartOption
     svg.appendChild(line);
   }
 
-  // Series lines + direct labels, one per series, staggered vertically
-  // (each at a different target y-fraction) so nearby curves don't collide.
-  series.forEach((s, index) => {
-    const path = svgEl("path");
+  // Series lines first, direct labels in a second pass below — every
+  // label needs to paint over every curve, including ones later in
+  // `series`, which interleaving one series' label between other
+  // series' curves (the previous approach) can't guarantee: SVG paints
+  // in document order, so a later curve still drawn on top of an
+  // earlier label was exactly what made a label read as "behind" a
+  // curve crossing it.
+  series.forEach((s) => {
     const d = sharedX
       .map((x, i) => `${i === 0 ? "M" : "L"}${xScale(x).toFixed(1)},${yScale(s.y[i]).toFixed(1)}`)
       .join(" ");
+
+    // A curve dark enough to lose contrast against the dark chart surface
+    // gets a thin halo in its own lightened hue instead of a hue change,
+    // so the ramp itself (see DAMAGE_STATE_COLORS in colors.ts, already
+    // re-stepped for this dark surface) stays untouched. Most series
+    // don't need this any more now that that ramp's own steps carry
+    // enough contrast on their own; this only catches the rare outlier.
+    if (relativeLuminance(s.color) < 0.12) {
+      const halo = svgEl("path");
+      halo.setAttribute("d", d);
+      halo.setAttribute("fill", "none");
+      halo.setAttribute("stroke", glowColor(s.color));
+      halo.setAttribute("stroke-opacity", "0.45");
+      halo.setAttribute("stroke-width", "3");
+      halo.setAttribute("stroke-linecap", "round");
+      svg.appendChild(halo);
+    }
+
+    const path = svgEl("path");
     path.setAttribute("d", d);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", s.color);
     path.setAttribute("stroke-width", "2");
     svg.appendChild(path);
+  });
 
-    if (series.length > 1) {
-      const n = series.length;
+  if (series.length > 1) {
+    const n = series.length;
+    series.forEach((s, index) => {
       const targetFraction = 0.5 + (index - (n - 1) / 2) * (0.9 / n);
       const targetY = yMin + (yMax - yMin) * targetFraction;
       let crossing = sharedX.length - 1;
@@ -208,8 +308,8 @@ export function renderLineChart(container: HTMLElement, options: LineChartOption
           break;
         }
       }
-      const label = svgEl("text");
       const labelX = xScale(sharedX[crossing]);
+      const labelY = yScale(s.y[crossing]) - 4;
       // Curves that never cross their target fraction within the
       // plotted range (e.g. a "Complete" curve still rising at the
       // right edge) anchor their label at the rightmost point, where a
@@ -220,16 +320,34 @@ export function renderLineChart(container: HTMLElement, options: LineChartOption
       // when that estimate would overflow.
       const estimatedLabelWidth = s.label.length * 6;
       const overflowsRight = labelX + 4 + estimatedLabelWidth > width - MARGIN.right;
-      label.setAttribute("x", String(overflowsRight ? labelX - 4 : labelX + 4));
+      const anchorX = overflowsRight ? labelX - 4 : labelX + 4;
+
+      // A flat chip behind the label, not a colored stroke halo: this is
+      // what actually stops another series' curve (or a gridline) from
+      // visibly cutting through the letterforms, since it fully covers
+      // whatever's behind rather than just outlining the text on top of it.
+      const chipPad = 3;
+      const chip = svgEl("rect");
+      chip.setAttribute("x", String(overflowsRight ? anchorX - estimatedLabelWidth - chipPad : anchorX - chipPad));
+      chip.setAttribute("y", String(labelY - 9));
+      chip.setAttribute("width", String(estimatedLabelWidth + chipPad * 2));
+      chip.setAttribute("height", "13");
+      chip.setAttribute("rx", "3");
+      chip.setAttribute("fill", CHART_TOKENS.surface);
+      chip.setAttribute("fill-opacity", "0.92");
+      svg.appendChild(chip);
+
+      const label = svgEl("text");
+      label.setAttribute("x", String(anchorX));
+      label.setAttribute("y", String(labelY));
       label.setAttribute("text-anchor", overflowsRight ? "end" : "start");
-      label.setAttribute("y", String(yScale(s.y[crossing]) - 4));
       label.setAttribute("font-size", "10");
       label.setAttribute("font-weight", "600");
       label.setAttribute("fill", s.color);
       label.textContent = s.label;
       svg.appendChild(label);
-    }
-  });
+    });
+  }
 
   // Hover crosshair + tooltip
   const crosshair = svgEl("line");

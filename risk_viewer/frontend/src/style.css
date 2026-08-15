@@ -1,6 +1,32 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --bg: #0a0c0f;
+  --panel: rgba(22, 27, 33, 0.48);
+  --panel-solid: #14181d;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.07);
+  --text: #edf1f3;
+  --muted: #9aa5ac;
+  --faint: #7c868d;
+
+  --blue: #2a78d6;
+  --blue-bg: rgba(59, 130, 246, 0.16);
+  --blue-ink: #93c5fd;
+  --green-bg: rgba(16, 163, 127, 0.18);
+  --green-ink: #7fe0c4;
+  --red: #e0776b;
+  --red-bg: rgba(239, 68, 68, 0.16);
+  --red-ink: #fca5a5;
+  --amber: #e2a33f;
+  --amber-bg: rgba(226, 163, 63, 0.16);
+  --amber-soft: rgba(226, 163, 63, 0.14);
+  --amber-ink: #f0be6f;
+  --amber-ink-dark: #2a1c04;
+  --focus: #6db4ff;
 }
 
 * {
@@ -13,11 +39,33 @@ body,
   margin: 0;
   height: 100%;
   width: 100%;
+  background: var(--bg);
+  color: var(--text);
 }
 
 #map {
   position: absolute;
   inset: 0;
+}
+
+/* ---------- glass panel (shared: #controls, #building-panel) ----------
+   Frosted, translucent surfaces over the live map: low-opacity tint +
+   backdrop-filter blur so the map's colors bleed through softly, plus a
+   saturate() boost and a 1px inner top highlight, which is what actually
+   reads as "glass" rather than just a dim flat panel — opacity/blur
+   alone over a mostly-dark map area is too subtle to register. */
+.glass-panel {
+  /* A diagonal sheen layered over the flat tint sells "glass" on its
+     own terms — relying only on blurred map content behind it reads as
+     glass over the mockup's busy synthetic city, but is too subtle
+     wherever the live map underneath is mostly dark/empty. */
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 45%), var(--panel);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 var(--glass-highlight);
 }
 
 #controls {
@@ -28,20 +76,69 @@ body,
   width: 260px;
   max-height: calc(100vh - 32px);
   overflow-y: auto;
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
   padding: 16px;
+  transition: width 0.2s ease, height 0.2s ease, padding 0.2s ease;
+}
+
+#controls-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+#controls-toggle:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Collapsed: the whole panel shrinks to just the toggle, a small round
+   tab pinned where the panel was — so re-opening it is a click in the
+   same spot, not a hunt across the screen. */
+#controls.collapsed {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+}
+
+#controls.collapsed #controls-toggle {
+  position: static;
+  width: 100%;
+  height: 100%;
+  transform: rotate(180deg);
+}
+
+#controls.collapsed #controls-body {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #controls,
+  #controls-toggle {
+    transition: none;
+  }
 }
 
 #controls h1 {
   font-size: 1.1rem;
   margin: 0 0 2px;
+  color: var(--text);
 }
 
 .subtitle {
   margin: 0 0 14px;
-  color: #52514e;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
@@ -49,20 +146,145 @@ body,
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #52514e;
+  color: var(--faint);
   margin-top: 12px;
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-#controls select {
+/* ---------- segmented control (Layer) ---------- */
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.segmented button {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--border-strong);
+}
+
+.segmented button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.segmented button.active {
+  background: var(--amber);
+  color: var(--amber-ink-dark);
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* ---------- custom dropdown (Color by / City) ---------- */
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-toggle {
   width: 100%;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid #c3c2b7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-solid);
+  color: var(--text);
   font-size: 0.9rem;
-  background: #fff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown-toggle:hover {
+  border-color: var(--faint);
+}
+
+.dropdown-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.dropdown-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-caret {
+  flex-shrink: 0;
+  color: var(--faint);
+  transition: transform 0.15s ease;
+}
+
+.dropdown[data-open] .dropdown-caret {
+  transform: rotate(180deg);
+}
+
+.dropdown[data-open] .dropdown-toggle {
+  border-color: var(--amber);
+}
+
+.dropdown-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.dropdown-list[hidden] {
+  display: none;
+}
+
+.dropdown-list li {
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dropdown-list li:hover,
+.dropdown-list li:focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+  outline: none;
+}
+
+.dropdown-list li.selected {
+  color: var(--amber);
+  font-weight: 600;
+  background: var(--amber-soft);
 }
 
 #legend {
@@ -72,6 +294,7 @@ body,
 #legend h2 {
   font-size: 0.85rem;
   margin: 0 0 8px;
+  color: var(--text);
 }
 
 .legend-list {
@@ -88,25 +311,27 @@ body,
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
+  color: var(--text);
 }
 
 .legend-swatch {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   flex-shrink: 0;
 }
 
 .error {
-  color: #b3261e;
+  color: var(--red-ink);
   font-size: 0.85rem;
   margin-top: 12px;
 }
 
 .deck-tooltip {
-  background: rgba(30, 30, 28, 0.92) !important;
-  color: #fff !important;
+  background: rgba(20, 24, 28, 0.95) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 6px !important;
   padding: 8px !important;
   font-size: 0.8rem !important;
@@ -119,7 +344,7 @@ body,
 
 .deck-tooltip th {
   text-align: left;
-  color: #cbd5e1;
+  color: var(--muted);
   padding-right: 8px;
   font-weight: 500;
   vertical-align: top;
@@ -132,15 +357,15 @@ body,
 .hint {
   margin: 14px 0 0;
   font-size: 0.75rem;
-  color: #898781;
+  color: var(--faint);
 }
 
 #scenario-panel {
   margin-top: 14px;
   padding: 10px;
-  background: #f9f9f7;
+  background: var(--panel-solid);
   border-radius: 8px;
-  border: 1px solid #e1e0d9;
+  border: 1px solid var(--border);
   max-height: 340px;
   overflow-y: auto;
 }
@@ -152,24 +377,26 @@ body,
 #scenario-panel h2 {
   font-size: 0.9rem;
   margin: 0 0 4px;
+  color: var(--text);
 }
 
 #scenario-panel h3 {
   font-size: 0.78rem;
   margin: 12px 0 6px;
+  color: var(--text);
 }
 
 .scenario-meta {
   margin: 0 0 6px;
   font-size: 0.75rem;
-  color: #52514e;
+  color: var(--muted);
   font-weight: 600;
 }
 
 .scenario-note {
   margin: 0;
   font-size: 0.72rem;
-  color: #898781;
+  color: var(--faint);
   line-height: 1.4;
 }
 
@@ -182,7 +409,7 @@ body,
 .scenario-stats th {
   text-align: left;
   font-weight: 500;
-  color: #52514e;
+  color: var(--muted);
   padding: 2px 8px 2px 0;
 }
 
@@ -190,6 +417,7 @@ body,
   text-align: right;
   padding: 2px 0;
   font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 .scenario-stats-sub th,
@@ -198,20 +426,27 @@ body,
   padding-left: 10px;
   font-size: 0.7rem;
   font-style: italic;
-  color: #898781;
+  color: var(--faint);
 }
 
+/* Always a bottom drawer, full width, never a right-side card — the
+   capacity/fragility charts are the reason to open this panel at all,
+   so it starts with the room it needs instead of a two-step "small card
+   first, then expand" that read as inconsistent. Overlaps #controls
+   rather than dodging it; #app.building-panel-open below fades
+   #controls so that overlap reads as "the drawer has focus" instead of
+   a layout collision. */
 #building-panel {
   position: absolute;
-  top: 16px;
+  top: auto;
+  bottom: 16px;
+  left: 16px;
   right: 16px;
   z-index: 10;
-  width: 340px;
-  max-height: calc(100vh - 32px);
+  width: auto;
+  max-height: 58vh;
   overflow-y: auto;
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
   padding: 16px;
 }
 
@@ -219,32 +454,181 @@ body,
   display: none;
 }
 
+#app.building-panel-open #controls:not(.collapsed) {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app.building-panel-open #controls:not(.collapsed) {
+    transition: none;
+  }
+}
+
+.building-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
 #building-panel-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   border: none;
   background: transparent;
-  font-size: 1.3rem;
-  line-height: 1;
+  border-radius: 6px;
   cursor: pointer;
-  color: #898781;
-  padding: 4px 6px;
+  padding: 4px 8px;
+  line-height: 1;
+  font-size: 1.3rem;
+  color: var(--faint);
 }
 
 #building-panel-close:hover {
-  color: #0b0b0b;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat-tile {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.stat-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stat-unit {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-tile-damage {
+  justify-content: center;
+  gap: 6px;
+}
+
+.damage-pill {
+  /* color set inline per-value (see ui.ts's readableTextColor) since the
+     background is a data color, not a fixed design token */
+  align-self: flex-start;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.building-panel-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.building-panel-right {
+  min-width: 0;
+}
+
+.charts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0;
+}
+
+.chart-card {
+  /* max-width caps it: a single chart-card (GEM/fallback sources,
+     which have no capacity curve alongside the fragility one) is the
+     lone flex item in .charts-row, and flex-grow alone would stretch it
+     — and the SVG's viewBox with it — to the full row width on a wide
+     monitor, blowing the chart and its axis text up far past a normal
+     chart size instead of just filling the row at a sane width. */
+  flex: 1 1 260px;
+  max-width: 480px;
+  min-width: 0;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.chart-card h3 {
+  margin-top: 0 !important;
+}
+
+/* Fragility card only: legend runs beside the chart instead of below
+   it, so the card gains width rather than height — the drawer has
+   width to spare and reducing panel height was the actual ask. */
+.chart-card--with-legend {
+  max-width: 640px;
+}
+
+.chart-card-body {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.chart-card-plot {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chart-card-legend {
+  flex: 0 0 148px;
+  padding-top: 4px;
+  font-size: 0.72rem;
+  gap: 8px;
+}
+
+.chart-card-legend li {
+  align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+  .chart-card-body {
+    flex-direction: column;
+  }
+
+  .chart-card-legend {
+    flex-basis: auto;
+  }
 }
 
 #building-panel-content h2 {
   font-size: 1rem;
   margin: 0 0 10px;
-  padding-right: 20px;
+  color: var(--text);
 }
 
 #building-panel-content h3 {
   font-size: 0.85rem;
   margin: 16px 0 6px;
+  color: var(--text);
 }
 
 .building-summary {
@@ -256,9 +640,9 @@ body,
 .override-controls {
   margin-top: 14px;
   padding: 10px;
-  background: #f9f9f7;
+  background: var(--panel-solid);
   border-radius: 8px;
-  border: 1px solid #e1e0d9;
+  border: 1px solid var(--border);
 }
 
 .override-controls h3 {
@@ -278,7 +662,7 @@ body,
   min-width: 0;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #52514e;
+  color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -291,8 +675,9 @@ body,
   text-transform: none;
   padding: 4px 6px;
   border-radius: 5px;
-  border: 1px solid #c3c2b7;
-  background: #fff;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
   width: 100%;
 }
 
@@ -300,15 +685,15 @@ body,
   margin-top: 10px;
   font-size: 0.75rem;
   background: none;
-  border: 1px solid #c3c2b7;
+  border: 1px solid var(--border-strong);
   border-radius: 5px;
   padding: 4px 10px;
   cursor: pointer;
-  color: #52514e;
+  color: var(--muted);
 }
 
 .override-reset:hover {
-  background: #efeeea;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .scenario-controls {
@@ -319,7 +704,7 @@ body,
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #52514e;
+  color: var(--muted);
   padding: 6px 0;
 }
 
@@ -330,27 +715,27 @@ body,
 .scenario-hint {
   margin: 0 0 8px;
   font-size: 0.7rem;
-  color: #898781;
+  color: var(--faint);
 }
 
 .scenario-pending-notice {
   margin: 0 0 8px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: #fff8e6;
-  border: 1px solid #fab219;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber);
   font-size: 0.72rem;
-  color: #8a5a00;
+  color: var(--amber-ink);
 }
 
 .scenario-error {
   margin: 6px 0 0;
   padding: 6px 8px;
   border-radius: 6px;
-  background: #fdece9;
-  border: 1px solid #e0776b;
+  background: var(--red-bg);
+  border: 1px solid var(--red);
   font-size: 0.75rem;
-  color: #9c2b1f;
+  color: var(--red-ink);
 }
 
 .scenario-button-row {
@@ -366,30 +751,30 @@ body,
   font-size: 0.75rem;
   padding: 5px 8px;
   border-radius: 5px;
-  border: 1px solid #c3c2b7;
-  background: #fff;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-solid);
   cursor: pointer;
-  color: #2d2c29;
+  color: var(--text);
 }
 
 .scenario-button-row button:hover {
-  background: #efeeea;
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .scenario-button-row button.primary {
-  background: #2a78d6;
-  border-color: #2a78d6;
-  color: #fff;
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--amber-ink-dark);
 }
 
 .scenario-button-row button.primary:hover {
-  background: #256abf;
+  background: #eeb355;
 }
 
 .scenario-button-row button.active {
-  background: #eb6834;
-  border-color: #eb6834;
-  color: #fff;
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--amber-ink-dark);
 }
 
 .scenario-mode-selector {
@@ -399,12 +784,12 @@ body,
   gap: 6px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e5e3da;
+  border-top: 1px solid var(--border);
 }
 
 .scenario-mode-label {
   font-size: 0.75rem;
-  color: #898781;
+  color: var(--faint);
   margin-right: 2px;
 }
 
@@ -412,34 +797,34 @@ body,
   font-size: 0.75rem;
   padding: 5px 8px;
   border-radius: 5px;
-  border: 1px solid #c3c2b7;
-  background: #fff;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-solid);
   cursor: pointer;
-  color: #2d2c29;
+  color: var(--text);
 }
 
 .scenario-mode-selector button:hover {
-  background: #efeeea;
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .scenario-mode-selector button.active {
-  background: #1baf7a;
-  border-color: #1baf7a;
-  color: #fff;
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--amber-ink-dark);
 }
 
 .hypothetical-notice {
   margin: 12px 0 0;
   padding: 6px 10px;
-  background: #eef4fc;
-  border-left: 3px solid #2a78d6;
+  background: var(--blue-bg);
+  border-left: 3px solid var(--blue);
   font-size: 0.75rem;
-  color: #184f95;
+  color: var(--blue-ink);
 }
 
 .building-summary th {
   text-align: left;
-  color: #52514e;
+  color: var(--muted);
   font-weight: 500;
   padding: 2px 8px 2px 0;
   vertical-align: top;
@@ -449,15 +834,16 @@ body,
 .building-summary td {
   text-align: left;
   padding: 2px 0;
+  color: var(--text);
 }
 
 .vulnerability-unavailable {
   margin-top: 12px;
   padding: 10px;
-  background: #f9f9f7;
+  background: var(--panel-solid);
   border-radius: 6px;
   font-size: 0.82rem;
-  color: #52514e;
+  color: var(--muted);
 }
 
 .source-badge {
@@ -472,18 +858,18 @@ body,
 }
 
 .source-badge-ml {
-  background: #e6f0fb;
-  color: #184f95;
+  background: var(--blue-bg);
+  color: var(--blue-ink);
 }
 
 .source-badge-gem {
-  background: #e3f7ef;
-  color: #0f6b47;
+  background: var(--green-bg);
+  color: var(--green-ink);
 }
 
 .source-badge-fallback {
-  background: #fdece9;
-  color: #9c2b1f;
+  background: var(--red-bg);
+  color: var(--red-ink);
 }
 
 .estimated-badge {
@@ -494,9 +880,9 @@ body,
   letter-spacing: 0.03em;
   padding: 2px 7px;
   border-radius: 999px;
-  background: #fff8e6;
-  color: #8a5a00;
-  border: 1px solid #fab219;
+  background: var(--amber-bg);
+  color: var(--amber-ink);
+  border: 1px solid var(--amber);
   margin-left: 6px;
   cursor: help;
 }
@@ -504,7 +890,7 @@ body,
 .ensemble-note {
   margin: 8px 0 6px;
   font-size: 0.75rem;
-  color: #52514e;
+  color: var(--muted);
 }
 
 .ensemble-candidate-buttons {
@@ -516,26 +902,28 @@ body,
 .ensemble-candidate-button {
   font-size: 0.78rem;
   font-weight: 600;
-  background: #fff;
-  border: 1px solid #2a78d6;
-  color: #184f95;
+  background: var(--panel-solid);
+  border: 1px solid var(--amber);
+  color: var(--amber-ink);
   border-radius: 5px;
   padding: 4px 10px;
   cursor: pointer;
 }
 
 .ensemble-candidate-button:hover {
-  background: #e6f0fb;
+  background: var(--amber-bg);
 }
 
 .prototype-notice {
   margin-top: 12px;
   padding: 8px 10px;
-  background: #fff8e6;
-  border: 1px solid #fab219;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber);
   border-radius: 6px;
   font-size: 0.72rem;
-  color: #52514e;
+  /* A cool gray (--muted) read poorly against this warm amber tint;
+     --amber-ink is warm too, so it sits on the tint instead of fighting it. */
+  color: var(--amber-ink);
   line-height: 1.4;
 }
 
@@ -546,8 +934,9 @@ body,
 .chart-tooltip {
   position: absolute;
   z-index: 2;
-  background: rgba(30, 30, 28, 0.92);
-  color: #fff;
+  background: rgba(20, 24, 28, 0.95);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 0.72rem;
@@ -556,7 +945,7 @@ body,
 }
 
 .chart-tooltip-x {
-  color: #cbd5e1;
+  color: var(--muted);
   margin-bottom: 2px;
 }
 
@@ -569,13 +958,20 @@ body,
 }
 
 .assumptions-list {
+  /* Multi-column instead of one long single-column list: the drawer has
+     width to spare, and spreading ~8 short entries across columns cuts
+     the list's height roughly in proportion to the column count instead
+     of needing the panel to grow taller to fit them all. */
+  column-width: 280px;
+  column-gap: 28px;
   margin: 0;
   padding-left: 18px;
   font-size: 0.75rem;
-  color: #52514e;
+  color: var(--muted);
   line-height: 1.5;
 }
 
 .assumptions-list li {
+  break-inside: avoid;
   margin-bottom: 4px;
 }

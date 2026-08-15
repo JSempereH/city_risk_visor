@@ -18,30 +18,35 @@
   <body>
     <div id="app">
       <div id="map"></div>
-      <aside id="controls">
-        <h1>City Risk Visor</h1>
-        <p class="subtitle" id="mode-subtitle">Exposure &amp; typology</p>
+      <aside id="controls" class="glass-panel">
+        <button id="controls-toggle" type="button" aria-label="Collapse panel" title="Collapse panel">⟨</button>
+        <div id="controls-body">
+          <h1>City Risk Visor</h1>
+          <p class="subtitle" id="mode-subtitle">Exposure &amp; typology</p>
 
-        <label for="mode-select">Layer</label>
-        <select id="mode-select">
-          <option value="exposure">Exposure &amp; typology</option>
-          <option value="risk">Seismic risk scenario</option>
-        </select>
+          <label>Layer</label>
+          <div id="mode-select" class="segmented">
+            <button type="button" data-value="exposure" class="active">Exposure &amp; typology</button>
+            <button type="button" data-value="risk">Seismic risk scenario</button>
+          </div>
 
-        <label for="attribute-select">Color by</label>
-        <select id="attribute-select"></select>
+          <label>Color by</label>
+          <div id="attribute-select"></div>
 
-        <label for="city-select">City</label>
-        <select id="city-select"></select>
+          <label>City</label>
+          <div id="city-select"></div>
 
-        <div id="scenario-panel" class="hidden"></div>
+          <div id="scenario-panel" class="hidden"></div>
 
-        <div id="legend"></div>
-        <div id="typology-quality"></div>
-        <p class="hint" id="mode-hint">Click a building to see its capacity &amp; fragility curves.</p>
+          <div id="legend"></div>
+          <div id="typology-quality"></div>
+          <p class="hint" id="mode-hint">Click a building to see its capacity &amp; fragility curves.</p>
+        </div>
       </aside>
-      <aside id="building-panel" class="hidden">
-        <button id="building-panel-close" aria-label="Close">&times;</button>
+      <aside id="building-panel" class="glass-panel hidden">
+        <div class="building-panel-actions">
+          <button id="building-panel-close" aria-label="Close">&times;</button>
+        </div>
         <div id="building-panel-content"></div>
       </aside>
     </div>
