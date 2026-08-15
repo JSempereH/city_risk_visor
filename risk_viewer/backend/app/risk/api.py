@@ -26,6 +26,14 @@ def _building_risk_properties(risk: BuildingRisk) -> dict[str, Any]:
         "id": risk.building_id,
         "risk_available": True,
         "curve_source": risk.curve_source,
+        # Overrides the stored structural_system_class from data_loader's
+        # feature (see scenario_to_feature_collection() below): under an
+        # active typology hypothesis this is the hypothesis-sampled class
+        # actually used to compute this building's risk, so the map's
+        # colouring and building panel reflect the hypothesis rather than
+        # showing stale recorded/estimated data next to updated numbers.
+        "structural_system_class": risk.structural_system_class,
+        "structural_system_estimated": risk.structural_system_estimated,
         "distance_km": risk.demand.distance_km,
         "demand_sa_g": risk.demand.sa_g,
         "demand_sd_mm": risk.demand.sd_mm,

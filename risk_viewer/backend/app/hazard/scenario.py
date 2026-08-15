@@ -70,6 +70,17 @@ class Scenario:
     # used to derive ground motion. Only return_period_years matters.
     mode: ScenarioMode = "deterministic"
     return_period_years: int | None = None
+    # Content-addressed hash of an active typology hypothesis (see
+    # app/typology_hypothesis.py::TypologyHypothesis.fingerprint()), or
+    # None when no hypothesis is active for this city. Included here,
+    # not tracked separately, specifically so it participates in this
+    # frozen dataclass's own equality/hash: app/risk/service.py's
+    # run_scenario() is @lru_cache-keyed on the whole Scenario, and
+    # without this field a hypothesis-influenced result and a plain
+    # result for the same city/magnitude/epicenter would collide on the
+    # same cache key, silently serving one city's request the other's
+    # (stale or hypothesis-contaminated) result.
+    typology_hypothesis_fingerprint: str | None = None
 
 
 # Epicenter coordinates are illustrative: each city's real centroid offset

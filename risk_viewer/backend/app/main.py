@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import data_loader, precomputed
 from app.config import FRONTEND_ORIGIN
-from app.routers import layers, scenarios, typology_ensemble, vulnerability
+from app.routers import layers, scenarios, typology_ensemble, typology_hypothesis, vulnerability
 
 
 @asynccontextmanager
@@ -34,7 +34,7 @@ app = FastAPI(title="Risk Viewer API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -42,6 +42,7 @@ app.include_router(layers.router)
 app.include_router(vulnerability.router)
 app.include_router(scenarios.router)
 app.include_router(typology_ensemble.router)
+app.include_router(typology_hypothesis.router)
 
 
 @app.get("/api/health")

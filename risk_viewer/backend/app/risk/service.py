@@ -11,6 +11,7 @@ from functools import lru_cache
 from typing import Any, Iterable, Optional
 
 from app import data_loader
+from app import typology_hypothesis
 from app.cities import CITIES
 from app.hazard import psha
 from app.hazard.ground_motion import DemandEstimate, compute_demand
@@ -55,6 +56,16 @@ class BuildingRisk:
     uncertainty: Optional[CombinedUncertainty]
     fragility_curves: Optional[list[FragilityCurve]]
     typology_beta: float
+    # The structural_system_class actually used for this risk run, which
+    # under an active typology hypothesis (app/typology_hypothesis.py) is
+    # the hypothesis-sampled class, not necessarily the building's
+    # recorded/stored one. app/risk/api.py reads this (rather than the
+    # stored value) when serialising the map layer, so the map's
+    # structural_system_class colouring and building panel actually
+    # reflect a "what if" hypothesis instead of silently showing stale
+    # data while only the aggregate numbers update.
+    structural_system_class: str
+    structural_system_estimated: bool
 
 
 def compute_building_risk(
@@ -81,6 +92,8 @@ def compute_building_risk(
             uncertainty=None,
             fragility_curves=None,
             typology_beta=typology_beta,
+            structural_system_class=building["structural_system_class"],
+            structural_system_estimated=building["structural_system_estimated"],
         )
 
     assert vulnerability.fragility_curves is not None
@@ -127,6 +140,8 @@ def compute_building_risk(
         uncertainty=uncertainty,
         fragility_curves=vulnerability.fragility_curves,
         typology_beta=typology_beta,
+        structural_system_class=building["structural_system_class"],
+        structural_system_estimated=building["structural_system_estimated"],
     )
 
 
@@ -161,7 +176,33 @@ def run_scenario(scenario: Scenario) -> CityScenarioSummary:
     city = scenario.city
     buildings = data_loader.get_buildings_by_city(city)
 
+    # An active expert typology hypothesis (app/typology_hypothesis.py)
+    # overrides every building's structural_system_class for this run,
+    # the same "what if" spirit as building_vulnerability()'s single-
+    # building query-param override, just applied city-wide and sampled
+    # to match the hypothesis's own stated class proportions rather than
+    # a single value repeated everywhere. scenario.typology_hypothesis_
+    # fingerprint (set by the caller, see app/routers/scenarios.py)
+    # guarantees this only runs, and this result only gets cached, under
+    # a cache key distinct from the same city's non-hypothesis scenario.
+    hypothesis = typology_hypothesis.get_hypothesis(city) if scenario.typology_hypothesis_fingerprint else None
+    sampled_classes: dict[str, str] = {}
+    hypothesis_beta = 0.0
+    if hypothesis is not None:
+        sampled_classes = typology_hypothesis.sample_classes(
+            (b["id"] for b in buildings), hypothesis.proportions_dict(), hypothesis.seed
+        )
+        hypothesis_beta = typology_hypothesis.hypothesis_typology_beta(hypothesis.proportions_dict())
+
+    def effective_building(building: dict[str, Any]) -> dict[str, Any]:
+        sampled_class = sampled_classes.get(building["id"])
+        if sampled_class is None:
+            return building
+        return {**building, "structural_system_class": sampled_class, "structural_system_estimated": True}
+
     def typology_beta_for(building: dict[str, Any]) -> float:
+        if building["id"] in sampled_classes:
+            return hypothesis_beta
         if building["structural_system_estimated"]:
             # This building's structural_system_class isn't recorded
             # data at all, just the typology classifier ensemble's own
@@ -184,6 +225,7 @@ def run_scenario(scenario: Scenario) -> CityScenarioSummary:
         # typology that's actually a guess.
         return CITIES[city].typology_beta_generic or 0.0
 
+    buildings = [effective_building(b) for b in buildings]
     risks = [compute_building_risk(b, scenario, typology_beta_for(b)) for b in buildings]
 
     damage_state_counts: dict[str, int] = {}

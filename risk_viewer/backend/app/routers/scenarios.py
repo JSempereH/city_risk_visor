@@ -10,6 +10,7 @@ import dataclasses
 from fastapi import APIRouter, HTTPException, Response
 
 from app import precomputed as precomputed_store
+from app import typology_hypothesis
 from app.hazard import psha
 from app.hazard.geo import haversine_km
 from app.hazard.scenario import SCENARIOS, PROBABILISTIC_RETURN_PERIODS_YEARS, Scenario, probabilistic_scenario
@@ -22,6 +23,21 @@ router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 MIN_MAGNITUDE, MAX_MAGNITUDE = 4.5, 9.0
 MIN_DEPTH_KM, MAX_DEPTH_KM = 1.0, 200.0
 MAX_EPICENTER_DISTANCE_KM = 500.0
+
+
+def _with_active_hypothesis(scenario: Scenario) -> Scenario:
+    """Attaches the active typology hypothesis's fingerprint (if any) for
+    this scenario's city, so app/risk/service.py::run_scenario()'s cache
+    key (keyed on the whole Scenario) never collides between a plain
+    request and a hypothesis-influenced one, or between two different
+    hypotheses (see Scenario.typology_hypothesis_fingerprint's own
+    docstring). A no-op (returns scenario unchanged) when no hypothesis
+    is active for this city.
+    """
+    hypothesis = typology_hypothesis.get_hypothesis(scenario.city)
+    if hypothesis is None:
+        return scenario
+    return dataclasses.replace(scenario, typology_hypothesis_fingerprint=hypothesis.fingerprint())
 
 
 def _build_scenario(
@@ -39,7 +55,7 @@ def _build_scenario(
     """
     base = SCENARIOS[city]
     if magnitude is None and depth_km is None and epicenter_lat is None and epicenter_lon is None:
-        return base
+        return _with_active_hypothesis(base)
 
     # base.label is "Mw {default magnitude}, {fault/interface name}"; once
     # any field is overridden that magnitude no longer matches what's
@@ -69,13 +85,15 @@ def _build_scenario(
             f"default epicenter ({base.epicenter_lat}, {base.epicenter_lon}).",
         )
 
-    return dataclasses.replace(
-        base,
-        label=custom_label,
-        magnitude=magnitude if magnitude is not None else base.magnitude,
-        depth_km=depth_km if depth_km is not None else base.depth_km,
-        epicenter_lat=lat,
-        epicenter_lon=lon,
+    return _with_active_hypothesis(
+        dataclasses.replace(
+            base,
+            label=custom_label,
+            magnitude=magnitude if magnitude is not None else base.magnitude,
+            depth_km=depth_km if depth_km is not None else base.depth_km,
+            epicenter_lat=lat,
+            epicenter_lon=lon,
+        )
     )
 
 
@@ -109,7 +127,7 @@ def _get_scenario_summary(
                 status_code=400,
                 detail=f"return_period_years must be one of {PROBABILISTIC_RETURN_PERIODS_YEARS}.",
             )
-        return run_scenario_coalesced(probabilistic_scenario(city, return_period_years))
+        return run_scenario_coalesced(_with_active_hypothesis(probabilistic_scenario(city, return_period_years)))
 
     scenario = _build_scenario(city, magnitude, depth_km, epicenter_lat, epicenter_lon)
     return run_scenario_coalesced(scenario)
@@ -183,13 +201,22 @@ def disaggregation(city: str, return_period_years: int = 475) -> dict:
 
 
 def _is_precomputable_request(
-    magnitude: float | None, depth_km: float | None, epicenter_lat: float | None, epicenter_lon: float | None
+    city: str,
+    magnitude: float | None,
+    depth_km: float | None,
+    epicenter_lat: float | None,
+    epicenter_lon: float | None,
 ) -> bool:
     """True for a request shaped like one of the 12 known menu combos
     (city default, or city + return_period_years only), the only
     requests scripts/precompute.py bakes ahead of time. Any deterministic
     override makes a request a Custom Scenario, which is never
-    precomputed (see app/precomputed.py)."""
+    precomputed (see app/precomputed.py). An active typology hypothesis
+    for this city (app/typology_hypothesis.py) also disqualifies it: the
+    baked-ahead precomputed bytes never reflect a hypothesis, since
+    scripts/precompute.py runs with no hypothesis active."""
+    if typology_hypothesis.get_hypothesis(city) is not None:
+        return False
     return magnitude is None and depth_km is None and epicenter_lat is None and epicenter_lon is None
 
 
@@ -202,7 +229,7 @@ def scenario_summary(
     epicenter_lon: float | None = None,
     return_period_years: int | None = None,
 ) -> dict | Response:
-    if _is_precomputable_request(magnitude, depth_km, epicenter_lat, epicenter_lon):
+    if _is_precomputable_request(city, magnitude, depth_km, epicenter_lat, epicenter_lon):
         # Raw bytes, returned as a Response directly: this is an
         # already-JSON-safe result baked at build time, so skip FastAPI's
         # jsonable_encoder + re-serialization on every request (see
@@ -226,7 +253,7 @@ def scenario_risk(
     epicenter_lon: float | None = None,
     return_period_years: int | None = None,
 ) -> dict | Response:
-    if _is_precomputable_request(magnitude, depth_km, epicenter_lat, epicenter_lon):
+    if _is_precomputable_request(city, magnitude, depth_km, epicenter_lat, epicenter_lon):
         precomputed = precomputed_store.get_precomputed_risk_bytes(city, return_period_years)
         if precomputed is not None:
             return Response(content=precomputed, media_type="application/json")
