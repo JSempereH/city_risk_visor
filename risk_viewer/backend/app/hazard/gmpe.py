@@ -132,6 +132,72 @@ def ground_motion_at_period(
     return GroundMotion(period_s=period_s, median_sa_g=math.exp(mean_ln), sigma_ln=sigma_ln)
 
 
+def _build_context_grid(
+    magnitude: float,
+    distances_km: np.ndarray,
+    depth_km: float,
+    regime: TectonicRegime,
+    vs30s: np.ndarray,
+    rake: float,
+    ztor_km: float | None,
+) -> RuptureContext:
+    """Same as _build_context, but for many sites (buildings) at once:
+    every per-site attribute (rjb/rrup/vs30) is a full-length array
+    instead of a length-1 one, everything else (magnitude, rake, ztor)
+    stays scenario-wide and scalar, exactly as it already was in
+    _build_context (hazardlib broadcasts a scalar context attribute
+    against the array-valued ones, this only changes which attributes
+    vary per site)."""
+    n = len(distances_km)
+    ctx = RuptureContext()
+    ctx.mag = magnitude
+    ctx.vs30 = np.asarray(vs30s, dtype=float)
+    ctx.sids = np.arange(n)
+    if regime == "crustal":
+        ctx.rake = rake
+        ctx.rjb = np.asarray(distances_km, dtype=float)
+    else:
+        ztor = ztor_km if ztor_km is not None else depth_km
+        ctx.ztor = ztor
+        ctx.rrup = np.sqrt(np.asarray(distances_km, dtype=float) ** 2 + depth_km**2)
+        ctx.rvolc = np.zeros(n)
+    return ctx
+
+
+def ground_motion_grid(
+    magnitude: float,
+    distances_km: np.ndarray,
+    depth_km: float,
+    regime: TectonicRegime,
+    periods_s: tuple[float, ...],
+    vs30s: np.ndarray,
+    rake: float = 0.0,
+    ztor_km: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """ground_motion_at_period, for every (site, period) pair at once via
+    a single vectorized hazardlib call, instead of one Python-level call
+    per site per period. All buildings in a scenario share the same
+    magnitude/depth/regime/rake/ztor (scenario-level, not per-building),
+    so only distance and vs30 vary per site here, same as
+    ground_motion_at_period's own per-call inputs.
+
+    Verified to reproduce ground_motion_at_period's per-call results
+    exactly (not just approximately): calling this with one period and
+    one site, or looping ground_motion_at_period over every (site,
+    period) pair, gives bit-identical medians/sigmas to calling this
+    once with the full arrays.
+
+    Returns (median_sa_g, sigma_ln), each shaped (n_sites, n_periods).
+    """
+    gmpe = _GMPE_BY_REGIME[regime]
+    ctx = _build_context_grid(magnitude, distances_km, depth_km, regime, vs30s, rake, ztor_km)
+    imts = [_period_to_imt(p) for p in periods_s]
+    result = get_mean_stds(gmpe, ctx, imts)  # (stat, n_periods, n_sites)
+    mean_ln = result[0]
+    sigma_ln = result[1]
+    return np.exp(mean_ln).T, sigma_ln.T  # -> (n_sites, n_periods)
+
+
 def median_pga_g(
     magnitude: float,
     distance_km: float,

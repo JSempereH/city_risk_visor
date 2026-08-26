@@ -132,30 +132,53 @@ CITIES: dict[str, CityProfile] = {
     ),
     "lomas_centinela": CityProfile(
         city="lomas_centinela",
-        scenario_label="Mw 8.1, 3 June 1932 Jalisco-Colima subduction mainshock",
-        magnitude=8.1,
-        depth_km=60.0,
-        epicenter_lat=19.5,
-        epicenter_lon=-104.25,
-        tectonic_regime="interface",
+        scenario_label="Mw 6.5, Zapopan Graben (Tesistan Valley) crustal normal fault",
+        magnitude=6.5,
+        depth_km=8.0,
+        epicenter_lat=20.796944,
+        epicenter_lon=-103.479444,
+        tectonic_regime="crustal",
         deterministic_source_note=(
-            "Real historical event, not an illustrative magnitude: the Mw 8.1 (Ms 8.2) "
-            "3 June 1932 mainshock, per Singh, Ponce & Nishenko (1985), 'The great Jalisco, "
-            "Mexico, earthquakes of 1932: Subduction of the Rivera plate', BSSA 75(5), the "
-            "standard anchor event for Jalisco seismic hazard (CENAPRED/SSN); much of its "
-            "historical damage and casualties concentrated in Guadalajara despite the ~170 km "
-            "distance, attributed to local soil response. Illustrative point epicenter, not "
-            "the paper's full rupture geometry; ztor_km assumed shallower than the 60 km "
-            "hypocentral depth for a large interface rupture, same convention as san_jose. "
-            "A closer but smaller-magnitude alternative controlling source exists locally: "
-            "SSN/UNAM attribute Zapopan's own highest-in-ZMG seismicity to the Tesistan and "
-            "Rio Santiago crustal faults, not modeled here."
+            "Quinteros-Cartaya, C., Solorio-Magana, G., Nunez-Cornu, F.J., "
+            "Escalona-Alcazar, F.J. & Nunez, D. (2023), 'Microearthquakes in the "
+            "Guadalajara Metropolitan Zone, Mexico: evidence from buried active faults "
+            "in Tesistan Valley, Zapopan', Natural Hazards 116(3), 2797-2818, a "
+            "seismological study of this exact area (temporary local network, "
+            "Sep 2017-Jan 2018, 188 located microearthquakes, 11 clusters). It documents "
+            "two buried normal faults bounding the Zapopan Graben, east (16 km, Mw up to "
+            "~6.2) and west (28 km, Mw up to ~6.5), with associated seismicity at 0-13.5 km "
+            "depth; the larger (west) fault is used here as the more conservative controlling "
+            "event, depth_km=8.0 as the midpoint of the observed range. Corroborated by "
+            "Martinez-Jaramillo, D., Zuniga, F.R., Wyss, M., Lacan, P. & Nunez Meneses, A. "
+            "(2025), 'Fatality estimates based on earthquake modeling in the Guadalajara "
+            "Metropolitan Area', Natural Hazards 121(10), 11443-11457, which uses this same "
+            "structure for city-scale scenario/fatality modeling. Epicenter placed at "
+            "Tesistan (20.796944, -103.479444), the locality nearest the documented "
+            "seismicity, an illustrative point ~12.6 km from Lomas del Centinela, not the "
+            "paper's own fault trace geometry (not published at that resolution); rake=-90 "
+            "(normal faulting), consistent with the graben's extensional setting at the "
+            "Tepic-Zacoalco/Chapala-Tula/Colima rift triple junction. Replaces this project's "
+            "earlier choice of the 1932 Mw 8.1 Jalisco-Colima subduction mainshock (Singh, "
+            "Ponce & Nishenko 1985): that event is ~168 km away and, even though it caused "
+            "real historical damage in Guadalajara's own soft-soil lakebed center, produces "
+            "negligible shaking this far from the interface at Lomas del Centinela's stiffer "
+            "hillside site; this closer, shallower crustal source is the more representative "
+            "controlling event for this specific neighborhood."
         ),
-        ztor_km=20.0,
-        # No PSHA source model integrated yet (candidate: GEM's Mexico national model,
-        # MEX v2025.0.0, CC BY-NC 4.0, license not yet checked for this use), so
-        # reference_vs30 and investigation_time_years stay None, a deterministic-only
-        # CityProfile, same as this module's docstring says is valid.
+        rake=-90.0,
+        probabilistic_source_note=(
+            "GEM Foundation's Mexico (MEX) national hazard model, v2025.0.0 (Johnson, Styron, "
+            "Brooks et al.), CC BY-NC-SA 4.0, same license class already used here for "
+            "Guatemala City's CCA model. Single source-model branch (no fault-geometry-style "
+            "epistemic choice to restrict, unlike Guatemala); the full GMPE logic tree spans "
+            "7 tectonic region types (MEX/CAM/USA crustal, CAM interface, CAM intraslab) with "
+            "155,520 possible combinations, run at a 200-sample reduction (see "
+            "scripts/psha/README.md) rather than full enumeration, the same sampling technique "
+            "already used for Santo Domingo. No published hazard curve exists at this exact "
+            "site to validate against directly."
+        ),
+        reference_vs30=800.0,
+        investigation_time_years=1.0,
         typology_beta_generic=0.6,
     ),
     # la_guaira (Venezuela) was built and wired up 2026-08-11: real

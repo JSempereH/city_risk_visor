@@ -1,0 +1,2 @@
+guatemala: 394 building(s) already had real roof_material (untouched), filled 39 of 42 previously-missing building(s), 3 still missing (insufficient valid pixels or below confidence threshold)
+updated /home/jshz/city_risk_visor/risk_viewer/backend/app/data/exposure/all_cities_combined.gpkg in place

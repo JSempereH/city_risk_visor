@@ -7,7 +7,7 @@ from app.main import app
 client = TestClient(app)
 
 
-@pytest.mark.parametrize("city", ["san_jose", "guatemala", "santo_domingo"])
+@pytest.mark.parametrize("city", ["san_jose", "guatemala", "santo_domingo", "lomas_centinela"])
 def test_disaggregation_all_three_cities(city):
     for years in (475, 975, 2475):
         response = client.get(f"/api/scenarios/{city}/disaggregation", params={"return_period_years": years})
@@ -45,4 +45,4 @@ def test_disaggregation_unsupported_city_404():
 
 
 def test_psha_module_disagg_supported_cities():
-    assert psha.DISAGG_SUPPORTED_CITIES == frozenset({"san_jose", "guatemala", "santo_domingo"})
+    assert psha.DISAGG_SUPPORTED_CITIES == frozenset({"san_jose", "guatemala", "santo_domingo", "lomas_centinela"})

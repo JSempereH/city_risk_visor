@@ -1,0 +1,107 @@
+{
+  "DNO_H1": {
+    "period_s": 0.3,
+    "states": {
+      "slight": {
+        "median_sd_mm": 8.9892,
+        "beta": 0.5614
+      },
+      "moderate": {
+        "median_sd_mm": 19.8097,
+        "beta": 0.562
+      },
+      "extensive": {
+        "median_sd_mm": 28.5779,
+        "beta": 0.5615
+      },
+      "complete": {
+        "median_sd_mm": 36.0059,
+        "beta": 0.5615
+      }
+    }
+  },
+  "DNO_H2": {
+    "period_s": 0.3,
+    "states": {
+      "slight": {
+        "median_sd_mm": 7.1191,
+        "beta": 0.6395
+      },
+      "moderate": {
+        "median_sd_mm": 18.4087,
+        "beta": 0.6396
+      },
+      "extensive": {
+        "median_sd_mm": 28.6449,
+        "beta": 0.6394
+      },
+      "complete": {
+        "median_sd_mm": 37.8494,
+        "beta": 0.639
+      }
+    }
+  },
+  "DNO_H3": {
+    "period_s": 0.3,
+    "states": {
+      "slight": {
+        "median_sd_mm": 8.257,
+        "beta": 0.6191
+      },
+      "moderate": {
+        "median_sd_mm": 19.2857,
+        "beta": 0.6185
+      },
+      "extensive": {
+        "median_sd_mm": 29.0469,
+        "beta": 0.619
+      },
+      "complete": {
+        "median_sd_mm": 37.7694,
+        "beta": 0.619
+      }
+    }
+  },
+  "DNO_H4": {
+    "period_s": 0.6,
+    "states": {
+      "slight": {
+        "median_sd_mm": 16.1874,
+        "beta": 0.5248
+      },
+      "moderate": {
+        "median_sd_mm": 38.0916,
+        "beta": 0.5229
+      },
+      "extensive": {
+        "median_sd_mm": 59.4099,
+        "beta": 0.5242
+      },
+      "complete": {
+        "median_sd_mm": 79.2693,
+        "beta": 0.5235
+      }
+    }
+  },
+  "DNO_H5": {
+    "period_s": 0.6,
+    "states": {
+      "slight": {
+        "median_sd_mm": 20.6188,
+        "beta": 0.518
+      },
+      "moderate": {
+        "median_sd_mm": 42.4845,
+        "beta": 0.5169
+      },
+      "extensive": {
+        "median_sd_mm": 64.235,
+        "beta": 0.5179
+      },
+      "complete": {
+        "median_sd_mm": 84.7642,
+        "beta": 0.5174
+      }
+    }
+  }
+}

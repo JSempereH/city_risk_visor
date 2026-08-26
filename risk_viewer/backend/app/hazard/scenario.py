@@ -81,6 +81,16 @@ class Scenario:
     # same cache key, silently serving one city's request the other's
     # (stale or hypothesis-contaminated) result.
     typology_hypothesis_fingerprint: str | None = None
+    # Same purpose as typology_hypothesis_fingerprint above, for an
+    # active expert typology *prior* instead (app/typology_prior.py::
+    # TypologyPrior.fingerprint()) -- a different, ground-truth-respecting
+    # mechanism (see that module's own docstring for how it differs from
+    # a hypothesis). data_loader.get_buildings_by_city() already applies
+    # a prior's per-building overrides directly, so run_scenario() needs
+    # no code change to reflect one -- only this cache-key field, so a
+    # prior-adjusted result is never served to, or cached over, a plain
+    # request or a request under a different prior.
+    typology_prior_fingerprint: str | None = None
 
 
 # Epicenter coordinates are illustrative: each city's real centroid offset

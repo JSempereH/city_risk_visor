@@ -35,14 +35,33 @@ clean:
 `validate_palette.py "#22c3f0,#ff8a5c,#c93a95,#8f7ff5" --mode dark
 --surface "#0a0c0f" --pairs all`.
 
-Every categorical attribute this app renders today (structural system,
-code quality, roof material) has at most four values, so four hues are
-enough per palette. A new city that introduces a 5th value for one of
-these (e.g. a finer structural-typology taxonomy) folds any values past
-the 4th into OTHER_COLOR rather than silently repeating a hue, per the
-same dataviz-skill rule ("a 9th series is never a generated hue, it
-folds into 'Other'"), and logs a warning so this becomes a fold-in-more-
-hues decision instead of a silent, misleading map legend.
+Every categorical attribute this app renders today except one has at
+most four values, so four hues would be enough for it. structural_system
+_class is the exception: once MUR/MCF/MR were split out of the generic
+"M" bucket (see data_loader.py's STRUCTURAL_SYSTEM_REPLACEMENTS),
+Guatemala alone has 6 real values (ADO/CR/M/MCF/MR/MUR). Rather than
+silently folding 2 legitimate, user-requested distinctions into a shared
+OTHER_COLOR, STRUCTURAL_SYSTEM_PALETTE was extended from 4 to 7 hues
+(keeping the original 4 in their original slots, so no existing city's
+colors shift). 7 mutually CVD-safe hues isn't achievable (this skill's
+own reference notes blue/orange/aqua as the only trio proven safe in
+both modes); the 3 new hues (gold, green, rust) land in the tool's
+documented "6-8 floor band", legal only with secondary encoding — this
+app's legend already pairs every swatch with a text label
+(ui.ts::renderCategoricalLegend), so that condition is met. Checked with
+`validate_palette.py "#22c3f0,#ff8a5c,#c93a95,#8f7ff5,#f2d43d,#4fd17a,
+#b5651d" --mode dark --surface "#0a0c0f" --pairs all`: passes chroma
+floor, normal-vision floor and surface contrast; fails the lightness
+band (same intentional override as the original 4, see below) and CVD
+separation (the floor-band tradeoff just described).
+
+Every other categorical attribute this app renders (code quality, roof
+material) stays on CATEGORICAL_PALETTE's 4 hues. A new city that
+introduces a 5th value for one of those folds any values past the 4th
+into OTHER_COLOR rather than silently repeating a hue, per the same
+dataviz-skill rule ("a 9th series is never a generated hue, it folds
+into 'Other'"), and logs a warning so this becomes a fold-in-more-hues
+decision instead of a silent, misleading map legend.
 """
 
 from __future__ import annotations
@@ -66,6 +85,9 @@ STRUCTURAL_SYSTEM_PALETTE = [
     "#ff8a5c",  # slot 2 - orange (gridnberg "accessible")
     "#c93a95",  # slot 3 - magenta (gridnberg "comfort")
     "#8f7ff5",  # slot 4 - violet
+    "#f2d43d",  # slot 5 - gold
+    "#4fd17a",  # slot 6 - green
+    "#b5651d",  # slot 7 - rust
 ]
 
 UNLABELED_COLOR = "#9e9d94"

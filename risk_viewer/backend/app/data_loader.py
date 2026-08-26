@@ -15,6 +15,7 @@ import geopandas as gpd
 import pandas as pd
 from footprint_attributes import position as fp_position
 
+from app import typology_prior
 from app.config import DATA_PATH
 from app.typology_ensemble import get_ensemble_info
 
@@ -22,17 +23,20 @@ UNLABELED = "unlabeled"
 
 # Mirrors ml_structural_system's own label_replacements (see
 # ml_structural_system/experiments/sjose_guatemala_sdomingo/main.yaml),
-# which collapses the raw structural_system values into 4 classes for
-# training. Reused here for display consistency, but unlike the training
-# pipeline (which drops rare/unlabeled rows), every building must still
-# render on the map, so missing values get an explicit "unlabeled" class
-# instead of being dropped.
+# which collapses S_light/S_frame into the ensemble's own W/CR classes
+# for training (the ensemble was never trained to tell masonry sub-types
+# apart, so its predictions, used by _fill_unlabeled_from_ensemble below,
+# are always one of its own 4 broad classes). MUR/MCF/MR (GEM Building
+# Taxonomy's Level-1 material codes for unreinforced/confined/reinforced
+# masonry, see app/vulnerability/gem_fragility.py) are kept distinct
+# rather than collapsed into "M": each now has its own published GEM
+# fragility curve, more specific than the generic "M" class's ML
+# capacity-model tier (which assumes best-quality mat_class='C1'
+# regardless of actual masonry sub-type, see building_mapping.py). "M"
+# itself (unknown-reinforcement masonry, GEM's M99) still routes there.
 STRUCTURAL_SYSTEM_REPLACEMENTS = {
     "S_light": "W",
     "S_frame": "CR",
-    "MUR": "M",
-    "MCF": "M",
-    "MR": "M",
 }
 
 
@@ -79,6 +83,30 @@ def _fill_unlabeled_from_ensemble(gdf: gpd.GeoDataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         {"structural_system_class": structural_system_class, "structural_system_estimated": estimated}
     )
+
+
+def _compute_structural_system_confirmed(gdf: gpd.GeoDataFrame) -> pd.Series:
+    """True for a building whose structural_system_class is a genuine
+    per-building record, not a whole-city/neighborhood documented
+    assumption used as a fallback where the typology ensemble has no
+    per-building prediction either (e.g. lomas_centinela's ~54 buildings
+    the ensemble's own inference step dropped for missing `year`, see
+    scripts/exposure/assign_lomas_centinela_typology.py). Both cases
+    leave structural_system_estimated False (neither is the ensemble's
+    own guess), so that flag alone can't tell them apart -- this mirrors
+    app/risk/service.py::typology_beta_for's own distinction instead
+    (ensemble info present for this building -> a real per-building
+    signal exists to fall back on; absent -> only the generic, city-wide
+    CityProfile.typology_beta_generic case applies), so a building never
+    reads as more certain on the map (see mapLayers.ts's confirmed-glow
+    layers) than the risk calculation itself treats it.
+    """
+    confirmed = pd.Series(False, index=gdf.index)
+    for idx, row in gdf.iterrows():
+        if row["structural_system_estimated"] or row["structural_system_class"] == UNLABELED:
+            continue
+        confirmed.loc[idx] = get_ensemble_info(row["id"], row["city"]) is not None
+    return confirmed
 
 
 # Fallback building height (m) for buildings with no recorded height/floor
@@ -147,6 +175,7 @@ def load_geodataframe() -> gpd.GeoDataFrame:
     gdf = gpd.read_file(DATA_PATH)
     gdf["structural_system_class"] = gdf["structural_system"].apply(_collapse_structural_system)
     gdf[["structural_system_class", "structural_system_estimated"]] = _fill_unlabeled_from_ensemble(gdf)
+    gdf["structural_system_confirmed"] = _compute_structural_system_confirmed(gdf)
     for column in ("code_quality", "roof_material"):
         gdf[column] = gdf[column].apply(_blank_to_unlabeled)
     gdf["relative_position"] = _compute_relative_position(gdf)
@@ -168,6 +197,19 @@ def _row_to_dict(row: pd.Series) -> dict[str, Any]:
         # and buildings that stayed "unlabeled" (no ensemble prediction
         # either).
         "structural_system_estimated": bool(row["structural_system_estimated"]),
+        # True only for a genuine per-building record, not a city-wide
+        # fallback assumption that also happens to leave
+        # structural_system_estimated False -- see
+        # _compute_structural_system_confirmed's own docstring. The map's
+        # confirmed-glow treatment (mapLayers.ts) keys off this, not the
+        # raw estimated flag, so that fallback never reads as verified.
+        "structural_system_confirmed": bool(row["structural_system_confirmed"]),
+        # Filled in below (_apply_prior_overrides) only for ML-estimated
+        # buildings under an active expert prior (app/typology_prior.py);
+        # None otherwise, including for every recorded (non-estimated)
+        # building -- a prior never touches those.
+        "structural_system_prior_uncertainty": None,
+        "structural_system_prior_probabilities": None,
         "relative_position": row["relative_position"],
         "code_quality": row["code_quality"],
         "centroid_lat": float(row["centroid_lat"]),
@@ -182,24 +224,90 @@ def _row_to_dict(row: pd.Series) -> dict[str, Any]:
     }
 
 
+def _apply_prior_overrides(city: str, base_buildings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Overrides structural_system_class (and attaches uncertainty/
+    posterior-probability info) for whichever buildings in
+    `base_buildings` are ML-estimated AND covered by an active expert
+    prior for `city` (app/typology_prior.py::get_prior). A no-op,
+    returning base_buildings completely unchanged, when no prior is
+    active -- the common case, so this stays cheap when the feature
+    isn't in use. Buildings with a real recorded structural_system are
+    never touched, by construction (compute_overrides only ever
+    produces entries for structural_system_estimated buildings)."""
+    prior = typology_prior.get_prior(city)
+    if prior is None:
+        return base_buildings
+    overrides = typology_prior.compute_overrides(base_buildings, prior)
+    if not overrides:
+        return base_buildings
+
+    result = []
+    for building in base_buildings:
+        override = overrides.get(building["id"])
+        if override is None:
+            result.append(building)
+            continue
+        adjusted = dict(building)
+        adjusted["structural_system_class"] = override.structural_system_class
+        adjusted["structural_system_prior_uncertainty"] = override.normalized_entropy
+        adjusted["structural_system_prior_probabilities"] = override.class_probabilities
+        result.append(adjusted)
+    return result
+
+
 def get_building(building_id: str) -> dict[str, Any] | None:
     gdf = load_geodataframe()
     matches = gdf[gdf["id"] == building_id]
     if matches.empty:
         return None
-    return _row_to_dict(matches.iloc[0])
+    # Goes through the full per-city path (not just this one row)
+    # because an active prior's math depends on the whole city's
+    # ground-truth/estimated population, not any single building --
+    # see typology_prior.compute_feasible_prior. compute_overrides()
+    # is memoized per (city, prior fingerprint), so repeated
+    # single-building lookups under the same prior are cheap.
+    city = matches.iloc[0]["city"]
+    for building in get_buildings_by_city(city):
+        if building["id"] == building_id:
+            return building
+    return None  # unreachable: building_id matched a row of this exact city above
 
 
 def get_buildings_by_city(city: str) -> list[dict[str, Any]]:
     gdf = load_geodataframe()
     subset = gdf[gdf["city"] == city]
-    return [_row_to_dict(row) for _, row in subset.iterrows()]
+    base = [_row_to_dict(row) for _, row in subset.iterrows()]
+    return _apply_prior_overrides(city, base)
 
 
 def feature_collection(city: str | None = None) -> dict[str, Any]:
+    """The map layer's own GeoJSON, structural_system_class overridden
+    the same way get_buildings_by_city() is for whichever cities have an
+    active prior -- built straight from the GeoDataFrame (not
+    _row_to_dict) for every other column, so a prior override here is
+    applied by patching just that one column on a copy rather than
+    reconstructing the whole feature collection by hand."""
     gdf = load_geodataframe()
     if city:
         gdf = gdf[gdf["city"] == city]
+
+    overrides: dict[str, typology_prior.BuildingPriorResult] = {}
+    for c in gdf["city"].dropna().unique():
+        prior = typology_prior.get_prior(c)
+        if prior is None:
+            continue
+        subset = gdf[gdf["city"] == c]
+        base = [_row_to_dict(row) for _, row in subset.iterrows()]
+        overrides.update(typology_prior.compute_overrides(base, prior))
+
+    if overrides:
+        gdf = gdf.copy()
+        new_classes = gdf["id"].map(lambda building_id: overrides.get(building_id))
+        mask = new_classes.notna()
+        gdf.loc[mask, "structural_system_class"] = new_classes.loc[mask].apply(
+            lambda override: override.structural_system_class
+        )
+
     return json.loads(gdf.to_json())
 
 

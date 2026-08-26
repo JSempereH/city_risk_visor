@@ -14,7 +14,7 @@ from app import data_loader
 from app import typology_hypothesis
 from app.cities import CITIES
 from app.hazard import psha
-from app.hazard.ground_motion import DemandEstimate, compute_demand
+from app.hazard.ground_motion import DemandEstimate, compute_demand, compute_demand_batch
 from app.hazard.scenario import Scenario
 from app.risk.casualty import CasualtyEstimate, expected_casualties, hazus_building_type
 from app.risk.damage import DamageDistribution, compute_damage_distribution
@@ -28,7 +28,7 @@ from app.risk.uncertainty import (
 )
 from app.typology_ensemble import get_ensemble_info
 from app.vulnerability.fragility import FragilityCurve
-from app.vulnerability.service import compute_vulnerability
+from app.vulnerability.service import VulnerabilityResult, compute_vulnerability_batch
 
 # Fixed typology_beta floor for a building whose structural_system_class
 # came from the typology ensemble's own prediction rather than recorded
@@ -69,15 +69,17 @@ class BuildingRisk:
 
 
 def compute_building_risk(
-    building: dict[str, Any], scenario: Scenario, typology_beta: float = 0.0
+    building: dict[str, Any],
+    vulnerability: VulnerabilityResult,
+    demand: Optional[DemandEstimate],
+    typology_beta: float = 0.0,
 ) -> BuildingRisk:
-    vulnerability = compute_vulnerability(
-        structural_system_class=building["structural_system_class"],
-        n_floors=building["n_floors"],
-        height=building["height"],
-        relative_position=building["relative_position"],
-        code_quality=building["code_quality"],
-    )
+    """Assembles one building's full risk result from its already-computed
+    vulnerability and demand (see run_scenario(), which computes both for
+    every building in the city up front, batched, before calling this).
+    `demand` is required (not None) whenever `vulnerability.available` is
+    True; it is never used otherwise.
+    """
     if not vulnerability.available:
         return BuildingRisk(
             building_id=building["id"],
@@ -97,14 +99,7 @@ def compute_building_risk(
         )
 
     assert vulnerability.fragility_curves is not None
-    demand = compute_demand(
-        scenario,
-        building["centroid_lat"],
-        building["centroid_lon"],
-        building["n_floors"],
-        bilinear=vulnerability.bilinear,
-        fixed_period_s=vulnerability.fixed_period_s,
-    )
+    assert demand is not None
     damage = compute_damage_distribution(vulnerability.fragility_curves, demand.sd_mm)
     population = estimate_population(
         building["id"], building["city"], building["footprint_area_m2"], building["n_floors"]
@@ -115,9 +110,17 @@ def compute_building_risk(
     casualties_night = expected_casualties(
         building["structural_system_class"], building["n_floors"], damage.state_probability, population.night
     )
+    # Gated on curve_source, not just "capacity_curve is not None": the
+    # GEM tier never populates capacity_curve at all (its own published
+    # curve is display-only, see vulnerability/gem_capacity.py) -- damage
+    # above already came from fragility_curves, which for that tier is
+    # GEM's own real published curve, never derived from a capacity
+    # curve. This check exists for ml_capacity_model specifically, whose
+    # capacity_curve carries real GPR predictive uncertainty that
+    # capacity_beta needs to propagate.
     capacity_beta = (
         capacity_beta_from_gpr_std(vulnerability.capacity_curve.v_over_w, vulnerability.capacity_curve.v_over_w_std)
-        if vulnerability.capacity_curve is not None
+        if vulnerability.capacity_curve is not None and vulnerability.curve_source == "ml_capacity_model"
         else 0.0
     )
     uncertainty = combine_uncertainty(
@@ -226,7 +229,41 @@ def run_scenario(scenario: Scenario) -> CityScenarioSummary:
         return CITIES[city].typology_beta_generic or 0.0
 
     buildings = [effective_building(b) for b in buildings]
-    risks = [compute_building_risk(b, scenario, typology_beta_for(b)) for b in buildings]
+
+    # Computed for every building up front, batched, rather than inside
+    # compute_building_risk()'s per-building loop below: compute_vulnerability
+    # is cached per (class, floors, height, position, code_quality) and
+    # compute_demand_batch issues 1-2 hazardlib calls for the whole city
+    # instead of up to 18 per building, see those functions' own
+    # docstrings for why this reproduces the exact same per-building
+    # results as calling them one building at a time.
+    #
+    # Position-aligned lists, not dicts keyed by building["id"]: some
+    # cities' exposure data has duplicate ids (san_jose has 11), and an
+    # id-keyed dict would silently collapse those rows together. Every
+    # list below stays the same length and order as `buildings`.
+    vulnerabilities = compute_vulnerability_batch(buildings)
+    if scenario.mode == "deterministic":
+        demands = compute_demand_batch(scenario, buildings, vulnerabilities)
+    else:
+        demands = [
+            compute_demand(
+                scenario,
+                b["centroid_lat"],
+                b["centroid_lon"],
+                b["n_floors"],
+                bilinear=v.bilinear,
+                fixed_period_s=v.fixed_period_s,
+            )
+            if v.available
+            else None
+            for b, v in zip(buildings, vulnerabilities)
+        ]
+
+    risks = [
+        compute_building_risk(b, v, d, typology_beta_for(b))
+        for b, v, d in zip(buildings, vulnerabilities, demands)
+    ]
 
     damage_state_counts: dict[str, int] = {}
     total_pop_day = 0.0

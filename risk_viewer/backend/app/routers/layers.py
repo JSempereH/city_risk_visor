@@ -57,5 +57,11 @@ def layer_legend(layer_id: str) -> dict[str, dict[str, str]]:
         # system and roof material made a color mean different things
         # depending on which attribute was active.
         palette = STRUCTURAL_SYSTEM_PALETTE if attribute.name == "structural_system_class" else CATEGORICAL_PALETTE
+        # Always the full, cross-city domain, so a given value (e.g.
+        # "MUR") keeps the same color everywhere: the frontend narrows
+        # which entries it *displays* to the active city client-side
+        # (state.ts's categoricalDomain/activeLegendFor), the same
+        # already-established pattern numericRange uses for sequential
+        # attributes, rather than this endpoint being refetched per city.
         legend[attribute.name] = categorical_legend(values, unlabeled_value=UNLABELED, palette=palette)
     return legend

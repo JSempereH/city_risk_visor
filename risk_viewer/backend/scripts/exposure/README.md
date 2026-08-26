@@ -372,13 +372,61 @@ a margin comparable to the very difference this is meant to resolve (a
 for the 27 matched buildings, not a guaranteed accuracy improvement over
 the uniform estimate it replaced.
 
+## Structural typology: mostly a pooled-model estimate, MUR fallback for the rest
+
+No labeled sample exists for this neighborhood itself to bootstrap a
+per-city `ml_structural_system` ensemble the way the 3 pilot cities'
+own models do (per `docs/adding_a_city.md`). Unlike La Guaira above,
+though, this isn't left as a pure city-wide assumption: a model POOLED
+across the 3 pilot cities' own labeled data (`ml_structural_system/
+experiments/sjose_guatemala_sdomingo/risk_viewer_models/lomas_centinela/
+config.yaml`) was trained and run against this neighborhood instead,
+giving 2,161 of 2,215 buildings (97.6%) a real per-building estimate
+(`structural_system_estimated = True`), the same mechanism the 3 pilot
+cities use for their own gaps. The remaining 54 (the pooled model's own
+inference step dropped them for missing `year`) still get the uniform
+`structural_system_class = "MUR"` (mamposteria sin refuerzo /
+unreinforced masonry) fallback, with `code_quality = "pre_code"` set on
+all 2,215 either way (typology is the only thing the ensemble
+estimates). See `assign_lomas_centinela_typology.py`'s own docstring for
+the full, up to date reasoning and citations (Preciado & Rodriguez 2015
+on a comparable Guadalajara-metro peri-urban colonia, CENAPRED's
+autoconstruccion manual, INEGI national wall-material statistics) --
+kept there rather than duplicated here since it's changed twice already
+(originally MCF, corrected to MUR; originally a blanket MUR assumption
+for every building, corrected to mostly-pooled-model once that model
+existed) and the docstring is the version that actually ships with the
+code that reads it.
+
+**Not on the same footing as the 3 pilot cities' own estimates.** A
+distribution-shift check against that pooled model
+(`risk_viewer_models/lomas_centinela/drift_report.txt`) found 27 of 30
+features significantly shifted between this neighborhood and the 3
+training cities, a two-sample classifier AUC of 0.9997 (near-perfect
+separability -- the model is being asked to extrapolate well outside
+what it saw in training), and a negative inter-model Fleiss' kappa
+(-0.30: the ensemble's own 3 models agree with each other WORSE than
+chance here, versus positive agreement in the pilot cities). There's
+also no local held-out ground truth to score it against at all
+(`held_out_metrics.json` has no `lomas_centinela` entry, by design, see
+`app/typology_ensemble/loader.py::get_ensemble_quality_metrics`). The
+app surfaces this as `locally_validated = False` wherever this city's
+ensemble is shown, rather than hiding the caveat or not using the model
+at all.
+
+`CityProfile.typology_beta_generic = 0.6` (see `app/cities.py`) still
+covers the 54 MUR-fallback buildings, same convention as La Guaira's own
+generic assumption; the 2,161 pooled-model estimates instead get
+`ESTIMATED_TYPOLOGY_BETA` (`app/risk/service.py`), the same fixed
+uncertainty floor every other city's ML-estimated buildings get.
+
 ## Not yet done
 
-Per `docs/adding_a_city.md`'s checklist: structural typology (no
-labeled sample exists for this neighborhood), deterministic scenario
-and PSHA source model for Mexico/Jalisco (candidates identified during
-planning: GEM's Mexico national PSHA model MEX v2025.0.0, CC BY-NC 4.0,
-license needs checking before use; Jalisco is CFE seismic zone D,
-Rivera/Cocos subduction plus local crustal faults are the controlling
-sources, still needs a single cited deterministic scenario written up
-in `app/hazard/scenario.py`'s style). No `CityProfile` entry exists yet.
+`app/cities.py` has a `CityProfile` entry, the deterministic scenario
+(Zapopan Graben crustal source, see `app/hazard/scenario.py`) and PSHA
+(GEM's MEX v2025.0.0 model) are both wired up -- see
+`risk_viewer/docs/adding_a_city.md`'s checklist for what "wired up"
+covers. What's still genuinely a mockup-level simplification, not a
+to-do: the single neighborhood-wide structural typology and floor-count
+assumptions above (no per-building survey exists), same caveat as
+everywhere else in this file.

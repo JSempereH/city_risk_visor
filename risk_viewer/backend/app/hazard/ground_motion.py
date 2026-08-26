@@ -25,15 +25,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 import numpy as np
 
 from app.hazard import atc40, psha, site
-from app.hazard.geo import haversine_km
-from app.hazard.gmpe import ground_motion_at_period
+from app.hazard.geo import haversine_km, haversine_km_array
+from app.hazard.gmpe import ground_motion_at_period, ground_motion_grid
 from app.hazard.scenario import Scenario
-from app.hazard.spectrum import build_demand_spectrum
+from app.hazard.spectrum import SPECTRUM_PERIODS_S, DemandSpectrum, build_demand_spectrum
+from app.vulnerability.service import VulnerabilityResult
 from app.vulnerability.spectral import BilinearCapacity
 
 METRES_PER_FLOOR_PERIOD = 0.1  # seconds per floor, simplified code formula
@@ -175,3 +176,142 @@ def _compute_demand_psha(
         vs30_ms=vs30,
         performance_point_method="elastic",
     )
+
+
+def compute_demand_batch(
+    scenario: Scenario,
+    buildings: list[dict[str, Any]],
+    vulnerabilities: list[VulnerabilityResult],
+) -> list[Optional[DemandEstimate]]:
+    """Same DemandEstimate per building as calling compute_demand() once
+    per building, for a deterministic scenario only (PSHA demand already
+    comes from precomputed curves with no GMPE call to batch, see
+    _compute_demand_psha above). `vulnerabilities` must be the same
+    length as `buildings`, in the same order (position i of one
+    corresponds to position i of the other); the result is a same-length
+    list too, None wherever that building's vulnerability isn't
+    available.
+
+    Deliberately positional, not keyed by building["id"]: some cities'
+    exposure data has duplicate ids (confirmed for san_jose, 11 of 897
+    ids each covering 2 rows), so an id-keyed intermediate dict would
+    silently collapse those rows onto one shared result, applying
+    whichever duplicate's demand to both, wrong whenever the two rows'
+    attributes actually differ. See app/risk/api.py's own risk_by_id
+    dict for the same latent risk one level up, at GeoJSON-serialization
+    time, not fixed here since it's a pre-existing, separate concern.
+
+    Only issues 1-2 hazardlib calls for the whole city (one for every
+    building whose vulnerability tier has a capacity curve to iterate
+    against with atc40.py, evaluated at the same fixed 18-period
+    spectrum grid; one for every other available building, evaluated at
+    whatever distinct set of periods those buildings actually use)
+    instead of up to 1 + 18 calls per building. See gmpe.py's
+    ground_motion_grid docstring for why this reproduces
+    ground_motion_at_period's per-building results exactly.
+    """
+    assert scenario.mode == "deterministic"
+    assert len(buildings) == len(vulnerabilities)
+
+    n = len(buildings)
+    result: list[Optional[DemandEstimate]] = [None] * n
+    available_positions = [i for i in range(n) if vulnerabilities[i].available]
+    if not available_positions:
+        return result
+
+    lats = np.array([buildings[i]["centroid_lat"] for i in available_positions])
+    lons = np.array([buildings[i]["centroid_lon"] for i in available_positions])
+    distances = haversine_km_array(scenario.epicenter_lat, scenario.epicenter_lon, lats, lons)
+    vs30s = site.vs30_at_many(scenario.city, lats, lons)
+
+    # Local indices, into available_positions/distances/vs30s (0..len(available_positions)-1).
+    atc40_local = [
+        j for j, i in enumerate(available_positions) if vulnerabilities[i].bilinear is not None
+    ]
+    atc40_local_set = set(atc40_local)
+    elastic_local = [j for j in range(len(available_positions)) if j not in atc40_local_set]
+
+    if atc40_local:
+        idx = np.array(atc40_local)
+        sa_grid, sigma_grid = ground_motion_grid(
+            scenario.magnitude,
+            distances[idx],
+            scenario.depth_km,
+            scenario.tectonic_regime,
+            SPECTRUM_PERIODS_S,
+            vs30s[idx],
+            rake=scenario.rake,
+            ztor_km=scenario.ztor_km,
+        )
+        for row, j in enumerate(atc40_local):
+            i = available_positions[j]
+            building = buildings[i]
+            vulnerability = vulnerabilities[i]
+            assert vulnerability.bilinear is not None
+            spectrum = DemandSpectrum(
+                periods_s=SPECTRUM_PERIODS_S,
+                sa_g=tuple(sa_grid[row]),
+                sigma_ln=tuple(sigma_grid[row]),
+            )
+            performance_point = atc40.compute_performance_point(vulnerability.bilinear, spectrum)
+            period_s = (
+                vulnerability.fixed_period_s
+                if vulnerability.fixed_period_s is not None
+                else building_period_s(building["n_floors"])
+            )
+            sigma_ln = float(np.interp(period_s, spectrum.periods_s, spectrum.sigma_ln))
+            result[i] = DemandEstimate(
+                distance_km=float(distances[j]),
+                period_s=period_s,
+                sa_g=performance_point.sa_g,
+                sd_mm=performance_point.sd_mm,
+                sigma_ln=sigma_ln,
+                vs30_ms=float(vs30s[j]),
+                performance_point_method="atc40",
+                ductility=performance_point.ductility,
+                effective_damping_pct=performance_point.effective_damping_pct,
+            )
+
+    if elastic_local:
+        periods_by_local = {}
+        for j in elastic_local:
+            i = available_positions[j]
+            building = buildings[i]
+            vulnerability = vulnerabilities[i]
+            periods_by_local[j] = (
+                vulnerability.fixed_period_s
+                if vulnerability.fixed_period_s is not None
+                else building_period_s(building["n_floors"])
+            )
+        distinct_periods = sorted(set(periods_by_local.values()))
+        period_to_column = {period: column for column, period in enumerate(distinct_periods)}
+
+        idx = np.array(elastic_local)
+        sa_grid, sigma_grid = ground_motion_grid(
+            scenario.magnitude,
+            distances[idx],
+            scenario.depth_km,
+            scenario.tectonic_regime,
+            tuple(distinct_periods),
+            vs30s[idx],
+            rake=scenario.rake,
+            ztor_km=scenario.ztor_km,
+        )
+        for row, j in enumerate(elastic_local):
+            i = available_positions[j]
+            period_s = periods_by_local[j]
+            column = period_to_column[period_s]
+            sa_g = float(sa_grid[row, column])
+            sa_ms2 = sa_g * 9.81
+            sd_mm = sa_ms2 * period_s**2 / (4 * math.pi**2) * 1000.0
+            result[i] = DemandEstimate(
+                distance_km=float(distances[j]),
+                period_s=period_s,
+                sa_g=sa_g,
+                sd_mm=sd_mm,
+                sigma_ln=float(sigma_grid[row, column]),
+                vs30_ms=float(vs30s[j]),
+                performance_point_method="elastic",
+            )
+
+    return result

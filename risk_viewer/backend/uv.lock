@@ -1973,6 +1973,8 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
     { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "toml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -2004,6 +2006,7 @@ requires-dist = [
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2" },
     { name = "scikit-learn", specifier = ">=1.9,<2" },
+    { name = "scipy" },
     { name = "toml" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]

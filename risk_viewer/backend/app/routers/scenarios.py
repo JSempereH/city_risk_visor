@@ -10,7 +10,7 @@ import dataclasses
 from fastapi import APIRouter, HTTPException, Response
 
 from app import precomputed as precomputed_store
-from app import typology_hypothesis
+from app import typology_hypothesis, typology_prior
 from app.hazard import psha
 from app.hazard.geo import haversine_km
 from app.hazard.scenario import SCENARIOS, PROBABILISTIC_RETURN_PERIODS_YEARS, Scenario, probabilistic_scenario
@@ -26,18 +26,23 @@ MAX_EPICENTER_DISTANCE_KM = 500.0
 
 
 def _with_active_hypothesis(scenario: Scenario) -> Scenario:
-    """Attaches the active typology hypothesis's fingerprint (if any) for
-    this scenario's city, so app/risk/service.py::run_scenario()'s cache
-    key (keyed on the whole Scenario) never collides between a plain
-    request and a hypothesis-influenced one, or between two different
-    hypotheses (see Scenario.typology_hypothesis_fingerprint's own
-    docstring). A no-op (returns scenario unchanged) when no hypothesis
-    is active for this city.
+    """Attaches the active typology hypothesis's fingerprint (if any),
+    and the active typology prior's fingerprint (if any -- a different,
+    ground-truth-respecting mechanism, see app/typology_prior.py's own
+    docstring for how it differs), for this scenario's city, so
+    app/risk/service.py::run_scenario()'s cache key (keyed on the whole
+    Scenario) never collides between a plain request and a hypothesis-
+    or prior-influenced one, or between two different ones (see
+    Scenario.typology_hypothesis_fingerprint/typology_prior_fingerprint's
+    own docstrings). A no-op for whichever of the two isn't active.
     """
     hypothesis = typology_hypothesis.get_hypothesis(scenario.city)
-    if hypothesis is None:
-        return scenario
-    return dataclasses.replace(scenario, typology_hypothesis_fingerprint=hypothesis.fingerprint())
+    if hypothesis is not None:
+        scenario = dataclasses.replace(scenario, typology_hypothesis_fingerprint=hypothesis.fingerprint())
+    prior = typology_prior.get_prior(scenario.city)
+    if prior is not None:
+        scenario = dataclasses.replace(scenario, typology_prior_fingerprint=prior.fingerprint())
+    return scenario
 
 
 def _build_scenario(
@@ -214,8 +219,11 @@ def _is_precomputable_request(
     precomputed (see app/precomputed.py). An active typology hypothesis
     for this city (app/typology_hypothesis.py) also disqualifies it: the
     baked-ahead precomputed bytes never reflect a hypothesis, since
-    scripts/precompute.py runs with no hypothesis active."""
+    scripts/precompute.py runs with no hypothesis active. Same reasoning
+    for an active typology prior (app/typology_prior.py)."""
     if typology_hypothesis.get_hypothesis(city) is not None:
+        return False
+    if typology_prior.get_prior(city) is not None:
         return False
     return magnitude is None and depth_km is None and epicenter_lat is None and epicenter_lon is None
 

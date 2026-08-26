@@ -17,23 +17,27 @@ casualty rates (Tables 13.9-13.11) are not used, since this app only
 tracks day/night indoor occupancy (see population.py), not an indoor/
 outdoor population split.
 
-HAZUS defines 36 US model building types; this app's four structural
-classes (ml_structural_system's ADO/CR/M/W, see
-app/vulnerability/building_mapping.py) map to the closest available type,
-split by story count where HAZUS itself splits by height (Chapter 3,
-Table 3.1):
+HAZUS defines 36 US model building types; this app's structural classes
+(ml_structural_system's ADO/CR/M/W plus the GEM-taxonomy masonry
+sub-classes MUR/MCF/MR, see app/vulnerability/building_mapping.py and
+gem_fragility.py) map to the closest available type, split by story
+count where HAZUS itself splits by height (Chapter 3, Table 3.1):
 
 - W (wood) -> W1, light wood frame. HAZUS gives W1 no height split.
 - CR (reinforced concrete) -> C1L/C1M/C1H, concrete moment frame, by
   story count (1-3 / 4-7 / 8+).
-- M (masonry: this app's M class merges HAZUS's unreinforced, confined
-  and reinforced masonry) -> URML/URMM, unreinforced masonry bearing
-  walls, by story count (1-2 / 3+). Unreinforced masonry is used as the
-  single representative case; confined or reinforced masonry would
-  perform better than these rates suggest.
-- ADO (adobe) -> URML. HAZUS's 36 types have no adobe or informal-masonry
-  category; URML (unreinforced masonry, low-rise) is the closest
-  available brittle, low-ductility type.
+- M, ADO, MUR, MCF, MR (all masonry, at every reinforcement level this
+  app distinguishes) -> URML/URMM, unreinforced masonry bearing walls,
+  by story count (1-2 / 3+). This is a deliberate simplification kept
+  even after MCF/MR got their own dedicated GEM *fragility* curves
+  (so how *likely* a confined/reinforced-masonry building is to reach a
+  given damage state is now realistic): HAZUS's own confined/reinforced
+  masonry types (RM1/RM2) have their own casualty-rate tables in the
+  manual, not sourced/transcribed into this module yet, so every masonry
+  sub-class still shares URML/URMM's rates *given* that damage state.
+  Confined or reinforced masonry would likely fare somewhat better than
+  these rates suggest at a given damage state, on top of already being
+  less likely to reach that state at all.
 """
 
 from __future__ import annotations
@@ -108,8 +112,8 @@ def hazus_building_type(structural_system_class: str, n_floors: float | None) ->
         if floors <= 7:
             return "C1M"
         return "C1H"
-    if structural_system_class in ("M", "ADO"):
-        # M and ADO both map to unreinforced masonry. See module docstring.
+    if structural_system_class in ("M", "ADO", "MUR", "MCF", "MR"):
+        # All masonry sub-classes map to unreinforced masonry. See module docstring.
         return "URML" if floors <= 2 else "URMM"
     # A new city's structural taxonomy (e.g. steel, hybrid) has no HAZUS
     # mapping decided for it yet, so fail loudly here rather than silently

@@ -14,7 +14,7 @@ CONFIGS_DIR = SCRIPTS_DIR / "configs"
 RAW_DIR = SCRIPTS_DIR / "_raw"  # downloaded source models, gitignored
 DATA_DIR = SCRIPTS_DIR.parents[1] / "app" / "data" / "psha"
 
-CITIES = ("san_jose", "guatemala", "santo_domingo")
+CITIES = ("san_jose", "guatemala", "santo_domingo", "lomas_centinela")
 
 # Must be a substring of that city's configs/{city}/job_hazard.ini
 # [general] description, used to find the classical calc a
@@ -23,6 +23,7 @@ CLASSICAL_DESCRIPTIONS = {
     "san_jose": "CRSHM2022 classical PSHA for San Jose",
     "guatemala": "CCA with fault-geometry source-model uncertainty, Guatemala City",
     "santo_domingo": "DOM source-model epistemic uncertainty",
+    "lomas_centinela": "MEX classical PSHA for Lomas del Centinela",
 }
 
 

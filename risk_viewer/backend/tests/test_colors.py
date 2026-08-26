@@ -1,4 +1,10 @@
-from app.colors import CATEGORICAL_PALETTE, OTHER_COLOR, UNLABELED_COLOR, categorical_legend
+from app.colors import (
+    CATEGORICAL_PALETTE,
+    OTHER_COLOR,
+    STRUCTURAL_SYSTEM_PALETTE,
+    UNLABELED_COLOR,
+    categorical_legend,
+)
 
 
 def test_categorical_legend_assigns_fixed_hues_in_order():
@@ -27,3 +33,14 @@ def test_categorical_legend_unlabeled_gets_its_own_color():
     legend = categorical_legend(["ADO", "unlabeled"], unlabeled_value="unlabeled")
     assert legend["unlabeled"] == UNLABELED_COLOR
     assert legend["unlabeled"] not in CATEGORICAL_PALETTE
+
+
+def test_structural_system_palette_covers_all_masonry_subclasses():
+    # Guatemala alone has 6 real structural_system_class values
+    # (ADO/CR/M/MCF/MR/MUR); the whole point of the 7-hue palette (see
+    # colors.py's own docstring) is that none of these legitimate,
+    # user-requested distinctions silently folds into OTHER_COLOR.
+    values = ["ADO", "CR", "M", "MCF", "MR", "MUR", "W"]
+    legend = categorical_legend(values, palette=STRUCTURAL_SYSTEM_PALETTE)
+    assert len(set(legend.values())) == 7
+    assert OTHER_COLOR not in legend.values()

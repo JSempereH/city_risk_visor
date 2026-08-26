@@ -16,6 +16,16 @@ flat value.
 Vs30 is fed directly into the GMPEs in gmpe.py, which each include their
 own published Vs30 site-response term, so there is no separate
 amplification step here.
+
+Nearest-grid-point lookup goes through a KD-tree (scipy.spatial.cKDTree),
+built once per city and cached, rather than comparing a building's
+coordinate against every grid point (a few thousand points per city):
+brute force is O(grid size) per building, so O(buildings * grid size) for
+a whole city, easily hundreds of millions of operations once a city has
+tens of thousands of buildings. The KD-tree turns a single lookup into
+O(log grid size), and vs30_at_many batches every building's lookup into
+one query call, which is what app/risk/service.py's per-scenario run
+actually needs.
 """
 
 from __future__ import annotations
@@ -25,6 +35,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "vs30"
 
@@ -43,12 +54,36 @@ def _grid(city: str) -> np.ndarray | None:
     return np.array(rows)
 
 
-def vs30_at(city: str, lat: float, lon: float) -> float:
+@lru_cache(maxsize=8)
+def _tree(city: str) -> cKDTree | None:
     grid = _grid(city)
     if grid is None:
+        return None
+    return cKDTree(grid[:, :2])
+
+
+def vs30_at(city: str, lat: float, lon: float) -> float:
+    grid = _grid(city)
+    tree = _tree(city)
+    if grid is None or tree is None:
         return DEFAULT_VS30_FALLBACK
-    dist_sq = (grid[:, 0] - lon) ** 2 + (grid[:, 1] - lat) ** 2
-    return float(grid[np.argmin(dist_sq), 2])
+    _, index = tree.query([lon, lat])
+    return float(grid[index, 2])
+
+
+def vs30_at_many(city: str, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
+    """Vs30 at every given (lat, lon), in one batched nearest-grid-point
+    query instead of one Python call per point. Returns an array the same
+    length as lats/lons, filled with DEFAULT_VS30_FALLBACK if this city
+    has no cropped grid."""
+    n = len(lats)
+    grid = _grid(city)
+    tree = _tree(city)
+    if grid is None or tree is None:
+        return np.full(n, DEFAULT_VS30_FALLBACK)
+    points = np.column_stack([lons, lats])
+    _, indices = tree.query(points)
+    return grid[indices, 2]
 
 
 def default_vs30(city: str) -> float:

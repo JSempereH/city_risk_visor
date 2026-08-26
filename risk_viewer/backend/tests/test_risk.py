@@ -254,6 +254,6 @@ def test_psha_cannot_combine_with_deterministic_overrides():
 def test_list_scenarios_reports_psha_availability():
     response = client.get("/api/scenarios")
     by_city = {s["city"]: s for s in response.json()}
-    for city in ("san_jose", "guatemala", "santo_domingo"):
+    for city in ("san_jose", "guatemala", "santo_domingo", "lomas_centinela"):
         assert by_city[city]["psha_available"] is True
         assert set(by_city[city]["psha_return_periods_years"]) == {475, 975, 2475}

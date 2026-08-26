@@ -18,7 +18,7 @@ That is why (like Vs30 and population, see site.py/population.py) this
 module reads a small offline-computed file rather than calling
 hazardlib's calc_hazard_curves() itself.
 
-Coverage: three cities, three different published source models, at
+Coverage: four cities, four different published source models, at
 different levels of simplification from the fully published logic tree
 (see docs/psha_plan.md section 7/10 for what was simplified per city and
 why):
@@ -37,8 +37,14 @@ why):
   branches x one of the "extendModel" subduction-source additions,
   rather than the full ~96-branch source model), with the full GMPE
   logic tree.
-No published hazard curve was available to validate Guatemala City or
-Santo Domingo against directly (unlike San Jose); see docs/psha_plan.md.
+- Lomas del Centinela: GEM's Mexico (MEX) national model. Single
+  source-model branch (no fault-geometry-style choice to restrict), run
+  at 200 of 155,520 possible source-model x GMPE logic-tree
+  combinations, the same reduced-sampling technique as Santo Domingo,
+  with the full GMPE logic tree.
+No published hazard curve was available to validate Guatemala City,
+Santo Domingo, or Lomas del Centinela against directly (unlike San
+Jose); see docs/psha_plan.md.
 
 What "mean_poe_Tyr" is: for each city, the GMPE-logic-tree-weighted
 *mean* hazard curve (probability of exceedance in that city's own source

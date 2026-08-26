@@ -29,6 +29,18 @@ def test_san_jose_scenario_matches_known_literals():
     assert psha_module.INVESTIGATION_TIME_YEARS_BY_CITY["san_jose"] == 50.0
 
 
+def test_lomas_centinela_scenario_matches_known_literals():
+    # Regression guard: Zapopan Graben / Tesistan Valley crustal source
+    # (Quinteros-Cartaya et al. 2023), replacing the earlier 1932
+    # subduction mainshock as the deterministic scenario -- see
+    # cities.py's own deterministic_source_note for the full citation.
+    lc = scenario_module.SCENARIOS["lomas_centinela"]
+    assert lc.magnitude == 6.5
+    assert lc.tectonic_regime == "crustal"
+    assert lc.rake == -90.0
+    assert lc.ztor_km is None
+
+
 def test_new_city_profile_is_picked_up_with_no_other_code_changes():
     fake_profile = CityProfile(
         city="fake_city",

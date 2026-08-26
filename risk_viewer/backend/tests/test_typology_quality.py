@@ -42,3 +42,13 @@ def test_quality_metrics_all_three_cities_have_ground_truth():
 def test_quality_metrics_unknown_city_404():
     response = client.get("/api/typology_ensemble/nowhere/quality")
     assert response.status_code == 404
+
+
+def test_quality_metrics_lomas_centinela_404():
+    # A real city with a real ensemble, but no held-out ground truth to
+    # score it against (its pooled model was trained on 3 OTHER cities,
+    # see scripts/exposure/assign_lomas_centinela_typology.py) -- 404
+    # here is what drives typology_ensemble's own locally_validated=False
+    # for this city, not an error.
+    response = client.get("/api/typology_ensemble/lomas_centinela/quality")
+    assert response.status_code == 404

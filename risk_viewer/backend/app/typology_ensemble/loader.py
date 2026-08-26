@@ -39,6 +39,12 @@ class EnsembleInfo:
     normalized_entropy: float
     is_contested: bool
     candidate_classes: list[str]
+    # Class -> soft-ensemble probability (assess.py's mean_proba, one
+    # proba_<class> column per class), empty when predictions.csv predates
+    # this field (see _build_sample_dataframe's own docstring for why
+    # these don't necessarily sum to 1.0: each model's own probabilities
+    # are threshold-adjusted before being averaged, not raw predict_proba).
+    class_probabilities: dict[str, float]
 
 
 def _label_mapping(city: str) -> dict[str, str]:
@@ -62,7 +68,14 @@ def _load_city(city: str) -> dict[str, EnsembleInfo]:
 
     result: dict[str, EnsembleInfo] = {}
     with open(predictions_path) as f:
-        for row in csv.DictReader(f):
+        reader = csv.DictReader(f)
+        # proba_<ClassName> columns already carry the real class name
+        # (see assess.py::_proba_column_names), unlike pred_<model>/
+        # majority_vote/ensemble_pred, which are encoded ints needing
+        # `decode`. Detected from the header rather than hardcoded, since
+        # the class set differs per city.
+        proba_columns = [c for c in (reader.fieldnames or []) if c.startswith("proba_")]
+        for row in reader:
             model_predictions = {
                 model: decode.get(row[f"pred_{model}"], row[f"pred_{model}"])
                 for model in MODEL_NAMES
@@ -71,6 +84,9 @@ def _load_city(city: str) -> dict[str, EnsembleInfo]:
             if not model_predictions:
                 continue
             candidate_classes = sorted(set(model_predictions.values()))
+            class_probabilities = {
+                column.removeprefix("proba_"): float(row[column]) for column in proba_columns
+            }
             result[row["id"]] = EnsembleInfo(
                 model_predictions=model_predictions,
                 majority_vote=decode.get(row["majority_vote"], row["majority_vote"]),
@@ -79,6 +95,7 @@ def _load_city(city: str) -> dict[str, EnsembleInfo]:
                 normalized_entropy=float(row["normalized_entropy"]),
                 is_contested=row["is_contested"].strip().lower() == "true",
                 candidate_classes=candidate_classes,
+                class_probabilities=class_probabilities,
             )
     return result
 

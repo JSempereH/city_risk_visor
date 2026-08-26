@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import data_loader, precomputed
 from app.config import FRONTEND_ORIGIN
-from app.routers import layers, scenarios, typology_ensemble, typology_hypothesis, vulnerability
+from app.routers import layers, scenarios, typology_ensemble, typology_hypothesis, typology_prior, vulnerability
 
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ app.include_router(vulnerability.router)
 app.include_router(scenarios.router)
 app.include_router(typology_ensemble.router)
 app.include_router(typology_hypothesis.router)
+app.include_router(typology_prior.router)
 
 
 @app.get("/api/health")

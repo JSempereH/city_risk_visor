@@ -11,6 +11,7 @@ from __future__ import annotations
 import io
 import json
 import sys
+import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -97,10 +98,43 @@ def fetch_santo_domingo() -> None:
     print(f"santo_domingo: extracted to {dest}")
 
 
+def fetch_lomas_centinela() -> None:
+    """GEM Mexico (MEX) national hazard model, v2025.0.0, CC BY-NC-SA 4.0.
+    https://hazard.openquake.org/gem/models/MEX (public Nextcloud share
+    at https://cloud.openquake.org/s/xqHswGaHQYJYXb8, "Open Version
+    Download"). Single source-model branch (no fault-geometry-style
+    epistemic choice to restrict, unlike Guatemala's CCA model); run at
+    reduced logic-tree sampling instead, see configs/lomas_centinela/
+    and README.md.
+
+    The share's zip nests a second zip one level down
+    (v2025.0.0/job.zip, alongside a README/LICENSE): that inner zip is
+    the actual model root (ssmLT_clean.xml, gmmLT_clean.xml, ssm/, ...),
+    so it gets extracted directly into `dest`, flattening both levels,
+    the same as santo_domingo's single level of flattening below.
+    """
+    dest = raw_dir("lomas_centinela")
+    if dest.exists() and any(dest.iterdir()):
+        print(f"lomas_centinela: {dest} already populated, skipping")
+        return
+    data = _download("https://cloud.openquake.org/s/xqHswGaHQYJYXb8/download")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        _extract_zip(data, tmp_path)
+        inner_zips = list(tmp_path.glob("*/job.zip"))
+        if len(inner_zips) != 1:
+            raise RuntimeError(
+                f"lomas_centinela: expected exactly one */job.zip in the downloaded share, found {inner_zips}"
+            )
+        _extract_zip(inner_zips[0].read_bytes(), dest)
+    print(f"lomas_centinela: extracted to {dest}")
+
+
 FETCHERS = {
     "san_jose": fetch_san_jose,
     "guatemala": fetch_guatemala,
     "santo_domingo": fetch_santo_domingo,
+    "lomas_centinela": fetch_lomas_centinela,
 }
 
 

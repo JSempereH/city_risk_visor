@@ -1,0 +1,2 @@
+santo_domingo: 1437 building(s) already had real roof_material (untouched), filled 26 of 27 previously-missing building(s), 1 still missing (insufficient valid pixels or below confidence threshold)
+updated /home/jshz/city_risk_visor/risk_viewer/backend/app/data/exposure/all_cities_combined.gpkg in place

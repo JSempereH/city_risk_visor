@@ -11,6 +11,9 @@ def test_hazus_building_type_mapping():
     assert hazus_building_type("M", 1) == "URML"
     assert hazus_building_type("M", 5) == "URMM"
     assert hazus_building_type("ADO", 1) == "URML"
+    assert hazus_building_type("MUR", 1) == "URML"
+    assert hazus_building_type("MCF", 1) == "URML"
+    assert hazus_building_type("MR", 5) == "URMM"
 
 
 def test_hazus_building_type_unknown_class_raises():

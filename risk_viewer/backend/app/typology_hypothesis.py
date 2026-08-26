@@ -48,12 +48,18 @@ import threading
 from dataclasses import dataclass
 from typing import Iterable
 
-# The 4 real structural display classes this project's risk pipeline
+# The real structural display classes this project's risk pipeline
 # understands (see app/data_loader.py::STRUCTURAL_SYSTEM_REPLACEMENTS
 # and app/risk/casualty.py::hazus_building_type(), which fails loudly on
-# any other value). "unlabeled" is deliberately excluded: a hypothesis
+# any other value). MUR/MCF/MR (unreinforced/confined/reinforced
+# masonry) let a hypothesis express exactly the kind of refinement
+# lomas_centinela's own single hard-coded "every building is MCF"
+# assumption (see this module's docstring, and
+# scripts/exposure/assign_lomas_centinela_typology.py) can't: e.g. "80%
+# MCF, 15% MUR, 5% CR" instead of one uniform label for the whole
+# neighborhood. "unlabeled" is deliberately excluded: a hypothesis
 # assigns a real class to every building, it never leaves one unlabeled.
-KNOWN_CLASSES = ("ADO", "CR", "M", "W")
+KNOWN_CLASSES = ("ADO", "CR", "M", "MCF", "MR", "MUR", "W")
 
 # Normalizes hypothesis entropy against the full known taxonomy (4
 # classes), not just however many the caller happened to name in this
@@ -127,26 +133,26 @@ def normalized_entropy(proportions: dict[str, float]) -> float:
     return max(0.0, min(1.0, bits / _MAX_ENTROPY_BITS))
 
 
-def sample_classes(building_ids: Iterable[str], proportions: dict[str, float], seed: int) -> dict[str, str]:
-    """Assigns exactly one class to each building, matching the given
-    proportions as closely as integer counts allow, not merely in
-    expectation the way independent per-building random draws would.
+def exact_quota_labels(ids: list[str], proportions: dict[str, float], seed: int) -> dict[str, str]:
+    """Assigns exactly one class to each id, matching the given
+    proportions (must already sum to ~1.0) as closely as integer counts
+    allow, not merely in expectation the way independent per-item random
+    draws would. Shared by this module's own sample_classes() (a whole
+    city's worth of buildings, replacing every class) and
+    typology_prior.py's sub-class split (just the buildings a prior's
+    own pooling already put in one bucket, e.g. "M" -> MUR/MCF/M) --
+    same algorithm, different population it's run over.
 
     Method: exact quota per class via the largest-remainder method
     (the same class of algorithm used for apportioning seats to
-    parties by vote share), then the class labels (not the buildings)
-    are shuffled with the given seed and handed out in building-id
-    order. Building order itself is never touched, so the assignment
-    is a pure function of (building_ids, proportions, seed): the same
-    inputs always reproduce the same per-building map, and which
-    specific building lands in which class is what the seed controls,
-    not the aggregate counts (those are exact, seed-independent).
-
-    This is a synthetic realization consistent with the stated
-    proportions, not a real classification of any specific building,
-    see this module's docstring.
+    parties by vote share), then the class labels (not the ids) are
+    shuffled with the given seed and handed out in id order. Id order
+    itself is never touched, so the assignment is a pure function of
+    (ids, proportions, seed): the same inputs always reproduce the same
+    per-id map, and which specific id lands in which class is what the
+    seed controls, not the aggregate counts (those are exact,
+    seed-independent).
     """
-    ids = list(building_ids)
     n = len(ids)
     if n == 0:
         return {}
@@ -173,6 +179,14 @@ def sample_classes(building_ids: Iterable[str], proportions: dict[str, float], s
 
     sorted_ids = sorted(ids)  # deterministic order the shuffled labels are handed out in
     return dict(zip(sorted_ids, labels))
+
+
+def sample_classes(building_ids: Iterable[str], proportions: dict[str, float], seed: int) -> dict[str, str]:
+    """Assigns exactly one class to each building -- see
+    exact_quota_labels() for the method. This is a synthetic realization
+    consistent with the stated proportions, not a real classification of
+    any specific building, see this module's own docstring."""
+    return exact_quota_labels(list(building_ids), proportions, seed)
 
 
 def hypothesis_typology_beta(proportions: dict[str, float]) -> float:
