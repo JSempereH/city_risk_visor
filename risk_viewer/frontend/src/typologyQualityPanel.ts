@@ -1,4 +1,4 @@
-import { ESTIMATED_STROKE_COLOR } from "./colors";
+import { CONFIRMED_GLOW_COLOR } from "./colors";
 
 export function renderTypologyQuality(container: HTMLElement, city: string | null, attributeName: string | undefined): void {
   if (!city || attributeName !== "structural_system_class") {
@@ -9,7 +9,8 @@ export function renderTypologyQuality(container: HTMLElement, city: string | nul
   const estimatedHint = document.createElement("p");
   estimatedHint.className = "scenario-hint";
   estimatedHint.innerHTML =
-    `Buildings outlined in <span style="color:${ESTIMATED_STROKE_COLOR};font-weight:600;">amber</span> have no ` +
-    `recorded structural system: the class shown for them is a model's prediction, not confirmed data.`;
+    `Buildings with a <span style="color:${CONFIRMED_GLOW_COLOR};font-weight:600;">glowing white</span> outline ` +
+    `have a confirmed structural system. Every other building's class is the model's own best estimate ` +
+    `— usually most of them, since real records are rare.`;
   container.appendChild(estimatedHint);
 }

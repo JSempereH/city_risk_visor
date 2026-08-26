@@ -18,6 +18,15 @@
   <body>
     <div id="app">
       <div id="map"></div>
+      <button id="reorient-toggle" type="button" class="icon-button" aria-label="Reset map orientation" title="Reset map orientation">🧭</button>
+      <button id="view-3d-toggle" type="button" class="icon-button" aria-label="Toggle 3D buildings" title="Toggle 3D buildings">3D</button>
+      <button id="settings-toggle" type="button" class="icon-button" aria-label="Settings" title="Settings">⚙</button>
+      <aside id="settings-panel" class="glass-panel hidden">
+        <div class="building-panel-actions">
+          <button id="settings-panel-close" aria-label="Close">&times;</button>
+        </div>
+        <div id="settings-panel-content"></div>
+      </aside>
       <aside id="controls" class="glass-panel">
         <button id="controls-toggle" type="button" aria-label="Collapse panel" title="Collapse panel">⟨</button>
         <div id="controls-body">

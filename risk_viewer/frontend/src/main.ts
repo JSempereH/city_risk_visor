@@ -2,14 +2,15 @@ import type { Layer, LayerAttribute } from "./api";
 import { fetchLayers, fetchLayerData, fetchLegend, fetchScenarios } from "./api";
 import { initSegmentedControl, populateAttributeSelect, populateCitySelect, type DropdownHandle } from "./ui";
 import { initBuildingPanelControls, selectBuilding } from "./buildingController";
-import { computeBbox, map, renderLayer, setBuildingClickHandler } from "./mapLayers";
+import { computeBbox, map, renderLayer, resetOrientation, setBuildingClickHandler, toggle3D } from "./mapLayers";
+import { initSettingsPanel } from "./settingsPanel";
 import {
   hideScenarioPanelForExposureMode,
   loadRiskForCity,
   pickEpicenter,
   setEpicenterPicking,
 } from "./scenarioController";
-import { activeAttributes, filteredExposureData, numericRangeOf, state, type Mode } from "./state";
+import { activeAttributes, categoricalDomainOf, filteredExposureData, numericRangeOf, state, type Mode } from "./state";
 import "./style.css";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8001";
@@ -87,6 +88,22 @@ function selectCity(city: string | null): void {
   }
 }
 
+// Re-fetches the exposure layer's full (all-cities) feature collection
+// and re-renders -- the same "fresh backend data replaces state.data"
+// step bootstrap() already does once for the background full-dataset
+// load (see below), reused here so applying/clearing a typology prior
+// (settingsPanel.ts) can make the map reflect it without a page reload.
+// A no-op if the exposure layer hasn't loaded yet (shouldn't happen once
+// the settings panel is even openable, kept as a guard).
+export async function refreshExposureData(): Promise<void> {
+  const layer = state.exposureLayer;
+  if (!layer) return;
+  const fullData = await fetchLayerData(layer.id);
+  state.data = fullData;
+  applyNumericRanges(layer);
+  if (state.mode === "exposure") renderLayer();
+}
+
 function showError(message: string): void {
   const controls = document.getElementById("controls-body");
   if (controls) {
@@ -108,6 +125,8 @@ function applyNumericRanges(layer: Layer): void {
   for (const attribute of layer.attributes) {
     if (attribute.kind === "sequential") {
       state.numericRange[attribute.name] = numericRangeOf(data, attribute.name);
+    } else if (attribute.kind === "categorical") {
+      state.categoricalDomain[attribute.name] = categoricalDomainOf(data, attribute.name);
     }
   }
 }
@@ -167,9 +186,20 @@ async function bootstrap(): Promise<void> {
   }
 
   initBuildingPanelControls();
+  initSettingsPanel(refreshExposureData);
 
   document.getElementById("controls-toggle")?.addEventListener("click", () => {
     document.getElementById("controls")?.classList.toggle("collapsed");
+  });
+
+  const view3DToggle = document.getElementById("view-3d-toggle");
+  view3DToggle?.addEventListener("click", () => {
+    toggle3D();
+    view3DToggle.classList.toggle("active", state.is3D);
+  });
+
+  document.getElementById("reorient-toggle")?.addEventListener("click", () => {
+    resetOrientation();
   });
 
   map.on("click", (event) => {

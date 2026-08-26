@@ -57,6 +57,13 @@ export interface OverriddenFlags {
   code_quality: boolean;
 }
 
+export interface GemReferenceEntry {
+  structural_system_class: string;
+  fixed_period_s: number;
+  assumptions: Record<string, string>;
+  fragility_curves: FragilityCurveData[];
+}
+
 export interface TypologyEnsemble {
   model_predictions: Record<string, string>;
   majority_vote: string;
@@ -65,12 +72,53 @@ export interface TypologyEnsemble {
   normalized_entropy: number;
   is_contested: boolean;
   candidate_classes: string[];
+  // Class -> soft-ensemble probability; doesn't necessarily sum to 1.0
+  // (threshold-adjusted, not raw predict_proba -- see loader.py's own
+  // EnsembleInfo.class_probabilities docstring). Empty object for a
+  // predictions.csv that predates this field.
+  class_probabilities: Record<string, number>;
+  // False for a city whose classifier was trained on OTHER cities' data
+  // with no local examples to check it against (e.g. lomas_centinela's
+  // pooled model) -- see backend's get_ensemble_quality_metrics.
+  locally_validated: boolean;
+}
+
+// The prior-adjusted posterior for this building (see
+// backend/app/typology_prior.py), present only when it's ML-estimated
+// AND covered by an active prior for its city -- structural_system_class
+// shown elsewhere already reflects this posterior's argmax (unless
+// overridden via the query params), this is the full distribution/
+// uncertainty behind that choice.
+export interface TypologyPriorResult {
+  posterior_class_probabilities: Record<string, number>;
+  posterior_normalized_entropy: number;
+}
+
+// PROVISIONAL: the ml_capacity_model GPR's own masonry-trained capacity
+// curve, rescaled for a GEM-tier building whose class the GPR was never
+// trained on (see backend/app/vulnerability/service.py's own
+// ApproxMlCapacity docstring for the class_ratio derivation). Never this
+// building's actual result -- curve_source stays "gem_global_vulnerability"
+// and its own published curve is what drives the real fragility curves --
+// just an optional secondary overlay the Curves tab can show alongside
+// it, with a real predictive-uncertainty band (sa_g_std) GEM's own
+// deterministic curve doesn't carry. null for every tier except
+// gem_global_vulnerability with a known floor count (the GPR needs real
+// geometry to run on at all).
+export interface ApproxMlCapacity {
+  direction_used: "X" | "Y";
+  sd_mm: number[];
+  sa_g: number[];
+  sa_g_std: number[];
+  class_ratio: number;
 }
 
 interface VulnerabilityOverrideInfo {
   overridden: OverriddenFlags;
   effective_inputs: EffectiveInputs;
   typology_ensemble: TypologyEnsemble | null;
+  typology_prior: TypologyPriorResult | null;
+  approx_ml_capacity: ApproxMlCapacity | null;
 }
 
 export interface VulnerabilityUnavailable extends VulnerabilityOverrideInfo {
@@ -83,6 +131,19 @@ interface VulnerabilityAvailableBase extends VulnerabilityOverrideInfo {
   reason: null;
   assumptions: Record<string, string>;
   fragility_curves: FragilityCurveData[];
+  // Only meaningful (non-null) for curve_source "gem_global_vulnerability";
+  // see vulnerabilityPanel.ts's PGA_PROXY_PERIOD_S for what it's used for.
+  fixed_period_s: number | null;
+  // PROVISIONAL masonry-quality correction actually applied (see
+  // service.py's _QUALITY_FACTOR_BY_CODE_QUALITY); 1.0 means none.
+  quality_factor: number;
+  // The published GEM curve(s) for this building's own class, shown as a
+  // reference regardless of which tier actually won (curve_source) --
+  // see service.py::_compute_gem_reference. null only when no GEM curve
+  // exists at all for this class (e.g. "unlabeled" never reaches here
+  // since it's never `available: true`, but kept nullable defensively).
+  // For structural_system_class "M" this is the 3-entry MUR/MCF/MR family.
+  gem_reference: GemReferenceEntry[] | null;
 }
 
 /** Tier 1: a real capacity curve, predicted by the ML model (masonry only). */
@@ -94,13 +155,19 @@ export interface VulnerabilityFromMlModel extends VulnerabilityAvailableBase {
   bilinear: BilinearCapacity;
 }
 
-/** Tier 2: no capacity curve, fragility from the GEM global vulnerability model. */
+/** Tier 2: fragility AND capacity curve both from the GEM global
+ * vulnerability model (always real, published data -- see
+ * gem_capacity.py). capacity_curve stays null: GEM's published curve is
+ * already spectral, with no building-level (roof-drift/base-shear)
+ * equivalent to report there, only spectral_capacity_curve/bilinear.
+ * direction_used stays null too: the published curve isn't direction-
+ * dependent, unlike the ml_capacity_model tier's own X/Y curves. */
 export interface VulnerabilityFromGem extends VulnerabilityAvailableBase {
   curve_source: "gem_global_vulnerability";
   direction_used: null;
   capacity_curve: null;
-  spectral_capacity_curve: null;
-  bilinear: null;
+  spectral_capacity_curve: SpectralCapacityCurve;
+  bilinear: BilinearCapacity;
 }
 
 /** Tier 3: no capacity curve, generic published-typology fragility only. */
@@ -357,5 +424,50 @@ export function clearTypologyHypothesis(city: string): Promise<{ city: string; c
   return deleteRequest<{ city: string; cleared: boolean }>(
     `/api/cities/${encodeURIComponent(city)}/typology_hypothesis`,
   );
+}
+
+// Expert-specified structural-typology *prior* for a city (see
+// backend/app/typology_prior.py). Deliberately NOT the same mechanism as
+// TypologyHypothesis above: a prior only ever adjusts ML-estimated
+// buildings (structural_system_estimated), never buildings with a real
+// recorded structural_system, and the given proportions are for the
+// WHOLE population (ground truth included), not just the estimated
+// share -- see that module's own docstring.
+export interface TypologyPriorFeasibility {
+  ground_truth_counts: Record<string, number>;
+  n_ground_truth: number;
+  n_estimated: number;
+  n_total: number;
+  prior_within_estimated: Record<string, number>;
+}
+
+export interface TypologyPrior {
+  city: string;
+  proportions: Record<string, number>;
+  alpha: number;
+  fingerprint: string;
+  // Only present on the response to setTypologyPrior(), not on a plain
+  // fetchTypologyPrior() (the backend doesn't re-derive/store this).
+  feasibility?: TypologyPriorFeasibility;
+}
+
+export function fetchAvailableTypologyClasses(
+  city: string,
+): Promise<{ city: string; classes: string[]; locally_validated: boolean }> {
+  return getJson<{ city: string; classes: string[]; locally_validated: boolean }>(
+    `/api/cities/${encodeURIComponent(city)}/typology_prior/available_classes`,
+  );
+}
+
+export function fetchTypologyPrior(city: string): Promise<TypologyPrior | null> {
+  return getJson<TypologyPrior | null>(`/api/cities/${encodeURIComponent(city)}/typology_prior`);
+}
+
+export function setTypologyPrior(city: string, proportions: Record<string, number>, alpha: number): Promise<TypologyPrior> {
+  return postJson<TypologyPrior>(`/api/cities/${encodeURIComponent(city)}/typology_prior`, { proportions, alpha });
+}
+
+export function clearTypologyPrior(city: string): Promise<{ city: string; cleared: boolean }> {
+  return deleteRequest<{ city: string; cleared: boolean }>(`/api/cities/${encodeURIComponent(city)}/typology_prior`);
 }
 

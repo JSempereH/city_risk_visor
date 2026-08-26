@@ -35,6 +35,16 @@ export interface AppState {
   data: GeoJSON.FeatureCollection | null;
   legend: Legend | null;
   numericRange: Record<string, NumericRange>;
+  // Which values of each categorical attribute actually occur in the
+  // currently active city (or every city, when none is selected), e.g.
+  // structural_system_class -> {"MCF"} for lomas_centinela, vs a 7-value
+  // set for guatemala. Recomputed on every city switch (see main.ts's
+  // applyNumericRanges(), same call sites as numericRange), so the
+  // legend panel only lists values this city actually has instead of
+  // every value any pilot city has ever used, without changing which
+  // color a given value gets (state.legend itself, used for map
+  // coloring, stays the full cross-city legend; see activeLegendFor()).
+  categoricalDomain: Record<string, Set<string>>;
   riskData: GeoJSON.FeatureCollection | null;
   riskNumericRange: Record<string, NumericRange>;
   scenarioSummary: ScenarioSummary | null;
@@ -75,6 +85,11 @@ export interface AppState {
   // discarded by a re-render triggered by something else.
   typologyHypothesisDraft: Record<string, string>;
   typologyHypothesisError: string | null;
+  // Whether the map is tilted into deck.gl's extruded building view (see
+  // mapLayers.ts's toggle3D()) or flat top-down. Kept in state, not just
+  // read off the map's own pitch, so renderLayer() can decide
+  // extruded/getElevation without querying MapLibre on every render.
+  is3D: boolean;
 }
 
 export const state: AppState = {
@@ -85,6 +100,7 @@ export const state: AppState = {
   data: null,
   legend: null,
   numericRange: {},
+  categoricalDomain: {},
   riskData: null,
   riskNumericRange: {},
   scenarioSummary: null,
@@ -100,6 +116,7 @@ export const state: AppState = {
   typologyHypothesis: null,
   typologyHypothesisDraft: {},
   typologyHypothesisError: null,
+  is3D: false,
 };
 
 export function activeAttributes(): LayerAttribute[] {
@@ -108,7 +125,27 @@ export function activeAttributes(): LayerAttribute[] {
 
 export function activeLegendFor(attributeName: string): Record<string, string> {
   if (state.mode === "risk") return RISK_CATEGORICAL_LEGEND[attributeName] ?? {};
-  return state.legend?.[attributeName] ?? {};
+  const full = state.legend?.[attributeName] ?? {};
+  const present = state.categoricalDomain[attributeName];
+  if (!present) return full;
+  const filtered: Record<string, string> = {};
+  for (const [value, color] of Object.entries(full)) {
+    if (present.has(value)) filtered[value] = color;
+  }
+  return filtered;
+}
+
+// Mirrors numericRangeOf() for categorical attributes: which distinct
+// values of `attribute` actually occur in `collection`, for scoping the
+// legend panel to a city (see categoricalDomain above) without touching
+// which color each value gets.
+export function categoricalDomainOf(collection: GeoJSON.FeatureCollection, attribute: string): Set<string> {
+  const values = new Set<string>();
+  for (const feature of collection.features) {
+    const value = feature.properties?.[attribute];
+    if (typeof value === "string") values.add(value);
+  }
+  return values;
 }
 
 export function activeNumericRange(attributeName: string): NumericRange {

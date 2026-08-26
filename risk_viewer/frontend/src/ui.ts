@@ -22,6 +22,17 @@ function closeOtherDropdowns(except: () => void): void {
   }
 }
 
+// Per-container cleanup, so re-running createDropdown() on the same
+// container (e.g. the attribute dropdown, rebuilt on every Exposure/Risk
+// mode switch, see main.ts's applyAttributeOptionsForMode()) removes the
+// previous instance's document click listener and openDropdownClosers
+// entry instead of leaving them behind. Without this, every mode switch
+// left one more permanently-registered document-level click listener
+// (and one more openDropdownClosers entry) pointing at the detached old
+// dropdown DOM, an unbounded leak that grew for as long as the page
+// stayed open.
+const containerCleanup = new WeakMap<HTMLElement, () => void>();
+
 /**
  * A styleable stand-in for a native <select>: same "one value from a
  * list" job, but the dropdown list is DOM/CSS (see .dropdown-list in
@@ -33,6 +44,7 @@ export function createDropdown(
   options: DropdownOption[],
   onChange: (value: string) => void,
 ): DropdownHandle {
+  containerCleanup.get(container)?.();
   container.innerHTML = "";
   container.classList.add("dropdown");
 
@@ -117,11 +129,17 @@ export function createDropdown(
     if (list.hidden) open();
     else close();
   });
-  document.addEventListener("click", (event) => {
+  const onDocumentClick = (event: MouseEvent) => {
     if (!container.contains(event.target as Node)) close();
-  });
+  };
+  document.addEventListener("click", onDocumentClick);
   toggle.addEventListener("keydown", (event) => {
     if (event.key === "Escape") close();
+  });
+
+  containerCleanup.set(container, () => {
+    document.removeEventListener("click", onDocumentClick);
+    openDropdownClosers.delete(close);
   });
 
   renderOptions();
@@ -159,6 +177,63 @@ export function initSegmentedControl(
       for (const button of buttons) button.classList.toggle("active", button.dataset.value === value);
     },
   };
+}
+
+export interface TabsHandle {
+  /** One content container per tab id, in the order `tabs` was given.
+   * Callers populate these directly (appendChild etc.); createTabs()
+   * itself only ever shows/hides them. */
+  panels: Record<string, HTMLElement>;
+  setActive: (id: string) => void;
+}
+
+/**
+ * A self-built tab strip (unlike initSegmentedControl above, which
+ * expects its buttons already in static HTML): builds both the button
+ * row and one content panel per tab, and shows exactly one panel at a
+ * time. Reuses .segmented's own styling for the button row, so a tab
+ * strip and the top-level Layer switcher read as the same control.
+ *
+ * Built for the building detail panel (see buildingController.ts):
+ * that panel used to stack every section (stats, identity, model
+ * agreement, override inputs, source badge, charts, assumptions)
+ * vertically, which meant even a single click already needed its own
+ * internal scroll. Splitting it into tabs means only one section's
+ * content is on screen at a time.
+ */
+export function createTabs(container: HTMLElement, tabs: { id: string; label: string }[]): TabsHandle {
+  container.innerHTML = "";
+
+  const tabRow = document.createElement("div");
+  tabRow.className = "segmented tabs-row";
+  container.appendChild(tabRow);
+
+  const panels: Record<string, HTMLElement> = {};
+  const buttons: Record<string, HTMLButtonElement> = {};
+
+  function setActive(id: string): void {
+    for (const [tabId, button] of Object.entries(buttons)) button.classList.toggle("active", tabId === id);
+    for (const [tabId, panel] of Object.entries(panels)) panel.classList.toggle("hidden", tabId !== id);
+  }
+
+  for (const tab of tabs) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = tab.label;
+    button.addEventListener("click", () => setActive(tab.id));
+    tabRow.appendChild(button);
+    buttons[tab.id] = button;
+
+    const panel = document.createElement("div");
+    panel.className = "tabs-panel";
+    container.appendChild(panel);
+    panels[tab.id] = panel;
+  }
+
+  const first = tabs[0];
+  if (first) setActive(first.id);
+
+  return { panels, setActive };
 }
 
 export function populateAttributeSelect(
@@ -265,19 +340,39 @@ const PROPERTY_LABELS: Record<string, string> = {
   structural_system_class: "Structural system",
 };
 
+// Rounded to a display-friendly precision, not the raw computed float
+// (e.g. centroid_lon's 15 decimal digits, ~0.0000001m of precision no
+// one reading a tooltip needs) -- also what was forcing this popup
+// wider than its own max-width, since a single unbroken digit string
+// can't wrap the way a sentence can.
+const ROUNDED_FIELDS: Record<string, number> = {
+  centroid_lat: 5,
+  centroid_lon: 5,
+  footprint_area_m2: 0,
+};
+
+// Internal bookkeeping, not something a person hovering a building
+// needs to see spelled out as a raw key/boolean -- structural_system_
+// estimated already rides along as a suffix below, and structural_system_
+// confirmed is the same idea one level more technical (see
+// mapLayers.ts's own confirmed-glow treatment for how it's actually
+// surfaced: a glow on the map, not a tooltip row).
+const HIDDEN_FIELDS = new Set(["structural_system_estimated", "structural_system_confirmed"]);
+
 export function formatTooltip(properties: Record<string, unknown>): string {
   const rows = Object.entries(properties)
-    // structural_system_estimated rides along as a plain suffix on
-    // structural_system_class's own row below, not a separate row.
-    .filter(([key, value]) => key !== "structural_system_estimated" && (typeof value !== "object" || value === null))
+    .filter(([key, value]) => !HIDDEN_FIELDS.has(key) && (typeof value !== "object" || value === null))
     .map(([key, value]) => {
       const label = PROPERTY_LABELS[key] ?? key;
+      const roundedTo = ROUNDED_FIELDS[key];
       let displayValue =
         value === null || value === undefined || value === ""
           ? "N/A"
           : key === "height" && typeof value === "number"
             ? value.toFixed(1)
-            : String(value);
+            : roundedTo !== undefined && typeof value === "number"
+              ? value.toFixed(roundedTo)
+              : String(value);
       if (key === "structural_system_class" && properties.structural_system_estimated === true) {
         displayValue += " (estimated)";
       }

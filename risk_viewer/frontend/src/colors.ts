@@ -10,13 +10,16 @@
 export const UNLABELED_COLOR = "#9e9d94";
 export const UNLABELED_VALUE = "unlabeled";
 
-// Outline for a building whose structural_system_class came from the
-// typology classifier's own prediction rather than recorded data (see
-// app/data_loader.py::_fill_unlabeled_from_ensemble). A secondary
-// encoding (stroke, not fill) so the fill color keeps meaning "this
-// class" regardless of confidence, and estimated buildings stay visually
-// distinct from confirmed ones without a whole extra hue.
-export const ESTIMATED_STROKE_COLOR = "#b8860b";
+// Glow color for a building whose structural_system_class is REAL
+// recorded data (app/data_loader.py::_fill_unlabeled_from_ensemble only
+// ever fills a genuine gap, never overrides a recorded one). Deliberately
+// the minority gets marked, not the majority: most cities are mostly
+// ML-estimated buildings, so flagging those instead reads as "the whole
+// map is flagged" rather than signaling anything (see mapLayers.ts's own
+// confirmed-glow layers for how this is actually drawn -- a real, if
+// faked, glow, not just a stroke color, since a same-weight stroke on
+// every building competed with the fill hue at this density).
+export const CONFIRMED_GLOW_COLOR = "#f2fbff";
 
 // Same blue hue family as the categorical palette's first slot.
 const SEQUENTIAL_PASTEL_STEPS = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#1c5cab"];
@@ -72,22 +75,28 @@ export function sequentialLegendSteps(min: number, max: number): { value: number
 // github.com/RELNO/gridnberg's own slope legend (gentle -> steep), a
 // perceptual multi-hue ramp in the same family as viridis/magma: hue
 // shifts alongside lightness, but lightness alone still carries the
-// order (monotone light->dark, checked below), so it degrades to the
-// single-hue case under any color-vision deficiency instead of relying
-// on hue. Exact stops sampled off that reference image's own gradient
-// bar (not eyeballed/invented), then nudged one step lighter at the
-// dark end to clear this app's contrast floor:
+// order, so it degrades to the single-hue case under any color-vision
+// deficiency instead of relying on hue. Exact stops sampled off that
+// reference image's own gradient bar (not eyeballed/invented):
 // `validate_palette.py "#722877,#b82d70,#da635f,#dd9d7a" --mode dark
 // --surface "#0a0c0f" --ordinal` -> ALL CHECKS PASS (hue spread 28,
 // under the method's 40 ceiling for "one perceptual family").
-// "none" is a neutral surface tone rather than the ramp's own lightest
-// step so it reads as "nothing to show" instead of "mild damage".
+//
+// Assigned darkest (violet) -> lightest (peach) as complete -> slight,
+// not the other way around: "more purple = more severe" was a direct
+// ask, overriding this ramp's first cut (peach = most severe, chosen
+// for max contrast against the dark map/chart surfaces — see chart.ts's
+// per-series glow, which still kicks in automatically here for
+// "complete" since it keys off relativeLuminance(), not which state the
+// color happens to be assigned to). "none" is a neutral surface tone
+// rather than the ramp's own lightest step so it reads as "nothing to
+// show" instead of "mild damage".
 export const DAMAGE_STATE_COLORS: Record<string, string> = {
   none: "#6b6f76",
-  slight: "#722877",
-  moderate: "#b82d70",
-  extensive: "#da635f",
-  complete: "#dd9d7a",
+  slight: "#dd9d7a",
+  moderate: "#da635f",
+  extensive: "#b82d70",
+  complete: "#722877",
 };
 
 export const DAMAGE_STATE_ORDER = ["none", "slight", "moderate", "extensive", "complete"] as const;

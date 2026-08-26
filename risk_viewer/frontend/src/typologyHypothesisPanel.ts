@@ -3,7 +3,7 @@ import type { TypologyHypothesis } from "./api";
 // Same order/codes as buildingInputsPanel.ts's STRUCTURAL_CLASSES: the
 // full taxonomy the backend's typology_hypothesis module understands
 // (backend/app/typology_hypothesis.py::KNOWN_CLASSES).
-const STRUCTURAL_CLASSES = ["ADO", "CR", "M", "W"];
+const STRUCTURAL_CLASSES = ["ADO", "CR", "M", "MCF", "MR", "MUR", "W"];
 
 export interface TypologyHypothesisControls {
   hypothesis: TypologyHypothesis | null;

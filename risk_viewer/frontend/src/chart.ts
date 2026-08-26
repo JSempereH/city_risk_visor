@@ -92,6 +92,11 @@ export interface ChartSeries {
   label: string;
   color: string;
   y: number[]; // same length as sharedX
+  // SVG stroke-dasharray, e.g. "6,3". Used to tell apart multiple
+  // overlaid sources sharing the same color ramp (see vulnerabilityPanel.ts's
+  // GEM-reference grayscale series, which reuses one 4-shade ramp per
+  // source and needs the dash pattern to distinguish *which* source).
+  dash?: string;
 }
 
 export interface ChartBand {
@@ -112,6 +117,13 @@ export interface LineChartOptions {
   yFormat?: (v: number) => string;
   markerX?: number; // optional vertical reference line (e.g. spectral demand)
   band?: ChartBand; // soft fill between two curves (e.g. p16/p84, +-1sd)
+  // Direct on-curve labels (the "series.length > 1" block below) read
+  // fine for a handful of series, but overlaying several sources at
+  // once (a source's own 4 damage states, times however many are
+  // toggled on) can reach a dozen+ lines, where direct labels just
+  // pile up unreadably. Defaults to on; callers pass false past some
+  // series-count threshold and rely on their own legend instead.
+  directLabels?: boolean;
 }
 
 // top has extra room set aside for the y-axis label (see below), so it
@@ -293,10 +305,11 @@ export function renderLineChart(container: HTMLElement, options: LineChartOption
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", s.color);
     path.setAttribute("stroke-width", "2");
+    if (s.dash) path.setAttribute("stroke-dasharray", s.dash);
     svg.appendChild(path);
   });
 
-  if (series.length > 1) {
+  if (series.length > 1 && options.directLabels !== false) {
     const n = series.length;
     series.forEach((s, index) => {
       const targetFraction = 0.5 + (index - (n - 1) / 2) * (0.9 / n);

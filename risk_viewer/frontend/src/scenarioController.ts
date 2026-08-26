@@ -10,7 +10,7 @@ import {
   type HazardCurve,
   type ScenarioOverrides,
 } from "./api";
-import { computeBbox, map, renderLayer } from "./mapLayers";
+import { computeBbox, map, renderLayer, startEpicenterPulse, stopEpicenterPulse } from "./mapLayers";
 import { RISK_ATTRIBUTES, numericRangeOf, pshaInfoForCity, state } from "./state";
 import { renderScenarioPanel, hideScenarioPanel } from "./scenarioPanel";
 
@@ -61,7 +61,23 @@ function renderCurrentScenarioPanel(): void {
   );
 }
 
+// Bumped at the start of every loadRiskForCity() call; a response only
+// gets applied if it's still the most recent request when it resolves.
+// Fixes a real race: switching to risk mode (which loads its own
+// default city) and picking a different city right after fires two
+// overlapping requests, and without this guard whichever one's network
+// response happened to land last would win, regardless of which was
+// requested last -- so a slower first response could overwrite the
+// second, correct one after the fact.
+let riskRequestSeq = 0;
+
 export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {}): void {
+  const requestSeq = ++riskRequestSeq;
+  // Rings stay invisible (not started) if there's no epicenter on screen
+  // yet to pulse from -- e.g. the very first scenario load of the
+  // session, before any scenarioSummary exists -- see mapLayers.ts's
+  // epicenterPosition()/pulseRingLayers().
+  startEpicenterPulse();
   showRiskLoading("Running scenario… (first run per combination takes a while)");
   const hazardCurvePromise: Promise<HazardCurve | null> = overrides.return_period_years
     ? fetchHazardCurve(city, "PGA")
@@ -82,6 +98,8 @@ export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {})
     fetchTypologyHypothesis(city),
   ])
     .then(([risk, summary, hazardCurve, disaggregation, typologyHypothesis]) => {
+      if (requestSeq !== riskRequestSeq) return; // a newer request has since been issued
+      stopEpicenterPulse();
       state.riskData = risk;
       state.scenarioSummary = summary;
       state.scenarioOverrides = overrides;
@@ -107,6 +125,8 @@ export function loadRiskForCity(city: string, overrides: ScenarioOverrides = {})
       map.fitBounds(computeBbox(risk), { padding: 40, duration: 500 });
     })
     .catch((error: unknown) => {
+      if (requestSeq !== riskRequestSeq) return; // a newer request has since been issued
+      stopEpicenterPulse();
       const message = error instanceof Error ? error.message : String(error);
       // Deliberately not showRiskLoading(...): that fully replaces the
       // panel with a bare paragraph, losing the form the user would

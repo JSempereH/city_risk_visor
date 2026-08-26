@@ -81,6 +81,99 @@ body,
   transition: width 0.2s ease, height 0.2s ease, padding 0.2s ease;
 }
 
+/* Top-right gear, opens #settings-panel as a flyout anchored below it --
+   deliberately its own top-level control, not nested inside #controls,
+   since it's meant to hold app-wide settings (today: the typology
+   prior), not per-layer display options the way #controls's own
+   dropdowns are. */
+#settings-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 11;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--panel-solid);
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#settings-toggle:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Left of the gear (see #settings-toggle above), same size/shape so the
+   two read as one row of top-right icon buttons. */
+#view-3d-toggle {
+  position: absolute;
+  top: 16px;
+  right: 64px;
+  z-index: 11;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--panel-solid);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#view-3d-toggle:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+#view-3d-toggle.active {
+  background: var(--amber);
+  color: var(--amber-ink-dark);
+  border-color: transparent;
+}
+
+/* Left of the 3D toggle, same row of top-right icon buttons (see
+   #view-3d-toggle above). A momentary action, not a persistent mode, so
+   unlike its neighbors it never gets an .active state. */
+#reorient-toggle {
+  position: absolute;
+  top: 16px;
+  right: 112px;
+  z-index: 11;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--panel-solid);
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#reorient-toggle:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+#settings-panel {
+  position: absolute;
+  top: 62px;
+  right: 16px;
+  z-index: 12;
+  width: 320px;
+  max-height: calc(100vh - 78px);
+  overflow-y: auto;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+#settings-panel.hidden {
+  display: none;
+}
+
 #controls-toggle {
   position: absolute;
   top: 10px;
@@ -322,6 +415,20 @@ body,
   flex-shrink: 0;
 }
 
+/* An inline SVG <line> (see vulnerabilityPanel.ts's dashedLineSwatch),
+   not a filled/striped block or a CSS border: a colored square with a
+   diagonal-stripe overlay on top (an earlier approach here) read as a
+   rendering glitch, and CSS's `border-style: dashed` cannot take a
+   custom on/off pattern at all -- every dashed swatch would render
+   identically regardless of which curve it stood for. Wider than the
+   solid .legend-swatch (26px vs 14px) so a pattern actually gets to
+   repeat once or twice before running out of room to read by. */
+.legend-swatch--dashed {
+  width: 26px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .error {
   color: var(--red-ink);
   font-size: 0.85rem;
@@ -352,6 +459,11 @@ body,
 
 .deck-tooltip td {
   text-align: left;
+  /* A safety net on top of formatTooltip's own rounding (ui.ts): an
+     unbroken value long enough to still exceed the column width (a raw
+     structural_system string, an unusually long id) wraps instead of
+     forcing the table, and with it this box, past its own max-width. */
+  overflow-wrap: anywhere;
 }
 
 .hint {
@@ -444,7 +556,28 @@ body,
   right: 16px;
   z-index: 10;
   width: auto;
-  max-height: 58vh;
+  /* Fixed, not max-: content is split into tabs (see .tabs-row/
+     .tabs-panel below), and only one tab's content is on screen at a
+     time. A max-height would let the panel's own size track whichever
+     tab happens to be shorter, so switching tabs visibly resized the
+     drawer -- fixing the height keeps it constant across tabs; a
+     shorter tab just leaves blank space rather than shrinking the
+     panel, and a taller one scrolls within this same height instead of
+     growing past it. Was 58vh (up from an earlier 46vh) while Overview
+     carried two standing caveat paragraphs (the GPR-model prototype
+     note and the code_quality strength-reduction note) -- both are gone
+     now, one moved to an on-hover info-icon-button, the other dropped
+     outright (see renderVulnerabilitySummary), so measured content
+     dropped well under the old 58vh at a 900px viewport: ~380px
+     (exposure mode) to ~415px (risk mode, whose stat strip is the
+     tallest Overview ever gets) of the ~382px this height's own padding
+     leaves available. 52vh reflects that measurement directly (not the
+     46vh exposure-only figure, which clips risk mode's stat strip into
+     its own scrollbar) -- still a real reduction from 58vh per direct
+     feedback that the drawer read as taking up too much screen, with
+     enough margin over the measured 415px that neither tab needs its
+     own scroll on a normal laptop/desktop viewport. */
+  height: 52vh;
   overflow-y: auto;
   border-radius: 12px;
   padding: 16px;
@@ -542,15 +675,48 @@ body,
   border-radius: 999px;
 }
 
-.building-panel-body {
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) 1fr;
-  gap: 24px;
-  align-items: start;
+/* .segmented's own styling handles the button row; this just gives it
+   the same bottom margin every other panel heading/section already
+   uses, so a tab strip doesn't crowd the content right under it. */
+.tabs-row {
+  margin-bottom: 14px;
 }
 
-.building-panel-right {
+.tabs-panel.hidden {
+  display: none;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Curves tab: charts (flex-grow, wraps its own cards) beside a fixed-
+   width sidebar for the override inputs, so changing an input and
+   seeing its effect on the curves happens without switching tabs. */
+.curves-tab-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.curves-tab-main {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+.curves-tab-sidebar {
+  flex: 0 0 200px;
+}
+
+@media (max-width: 720px) {
+  .curves-tab-layout {
+    flex-direction: column;
+  }
+
+  .curves-tab-sidebar {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 
 .charts-row {
@@ -574,23 +740,57 @@ body,
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
+  /* Column layout so .chart-card-body's own margin-top:auto (below) can
+     pin the actual chart to this card's bottom edge -- .charts-row's
+     default align-items:stretch already equalizes both cards' outer
+     height, but without this the chart itself still starts right after
+     whatever header content (hint text, badges, toggle chips) happens
+     to precede it, which varies between the capacity and fragility
+     cards and threw their axes out of alignment. */
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-card h3 {
   margin-top: 0 !important;
 }
 
+/* The capacity-curve slot for tiers with no capacity curve to plot
+   (GEM/fallback) -- keeps the charts row's 2-card shape instead of
+   collapsing to one card only for masonry buildings. */
+.chart-card--empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.chart-empty-note--card {
+  padding: 4px 0;
+  text-align: left;
+}
+
 /* Fragility card only: legend runs beside the chart instead of below
    it, so the card gains width rather than height — the drawer has
-   width to spare and reducing panel height was the actual ask. */
+   width to spare and reducing panel height was the actual ask.
+   max-width is wider than .chart-card's own 480px specifically so the
+   PLOT itself still renders at the same size as the capacity card's
+   (480 - 28px padding = 452px): 452 (plot) + 14px (body gap) + 220px
+   (.chart-card-legend's own flex-basis) + 28px (padding) = 714px. Per
+   direct user feedback that the two charts read as different sizes
+   once the legend widened to fit both curve sources' worth of items. */
 .chart-card--with-legend {
-  max-width: 640px;
+  max-width: 714px;
 }
 
 .chart-card-body {
   display: flex;
   gap: 14px;
   align-items: flex-start;
+  /* Pins the chart to the bottom of its (stretched) .chart-card, see
+     that rule's own comment -- both the capacity and fragility cards
+     use this class for their actual chart wrapper, so their fixed-height
+     (170px) SVGs bottom-align regardless of header content above them. */
+  margin-top: auto;
 }
 
 .chart-card-plot {
@@ -598,11 +798,24 @@ body,
   min-width: 0;
 }
 
+/* A 2-column grid, not a single flex column: with both the real and
+   the approximate fragility curve toggled on (8 items: 4 damage states
+   x 2 sources), a single column grew taller than the chart beside it
+   and pushed the whole bottom panel into needing a vertical scroll --
+   see .curves-tab-layout/#building-panel's own "no scroll" intent. 2
+   columns keeps 8 items within the chart's own height in the normal
+   case; max-height + overflow-y is a safety net for anything taller
+   still (a legend scrolling on its own, not the whole panel). */
 .chart-card-legend {
-  flex: 0 0 148px;
+  flex: 0 0 220px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
   padding-top: 4px;
-  font-size: 0.72rem;
-  gap: 8px;
+  font-size: 0.7rem;
+  gap: 6px 10px;
+  max-height: 230px;
+  overflow-y: auto;
 }
 
 .chart-card-legend li {
@@ -616,6 +829,7 @@ body,
 
   .chart-card-legend {
     flex-basis: auto;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -631,34 +845,175 @@ body,
   color: var(--text);
 }
 
+#settings-panel-content h2 {
+  font-size: 1rem;
+  margin: 0 0 10px;
+  color: var(--text);
+}
+
+#settings-panel-content h3 {
+  font-size: 0.85rem;
+  margin: 14px 0 6px;
+  color: var(--text);
+}
+
+.prior-form {
+  margin-top: 10px;
+}
+
+.prior-active-note {
+  padding: 6px 8px;
+  background: var(--amber-soft);
+  border-radius: 6px;
+  color: var(--amber-ink);
+  margin: 0 0 10px;
+}
+
+.prior-class-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.prior-class-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.prior-class-row span:first-child {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.prior-class-row input[type="number"] {
+  width: 52px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.prior-total-line {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.prior-total-warning {
+  color: var(--amber-ink);
+}
+
+.prior-alpha-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+}
+
+.prior-alpha-field input[type="range"] {
+  width: 100%;
+}
+
+.prior-alpha-value {
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-transform: none;
+  color: var(--text);
+}
+
+.prior-result {
+  margin-bottom: 8px;
+}
+
+.prior-feasibility-note {
+  padding: 6px 8px;
+  background: var(--green-bg);
+  border-radius: 6px;
+  color: var(--green-ink);
+}
+
+.prior-button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.prior-apply-button,
+.prior-clear-button {
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.prior-apply-button {
+  border: none;
+  background: var(--blue);
+  color: white;
+}
+
+.prior-apply-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.prior-clear-button {
+  border: 1px solid var(--border-strong);
+  background: none;
+  color: var(--muted);
+}
+
+.prior-clear-button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .building-summary {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
 }
 
+/* Sidebar placement (.curves-tab-sidebar): a single narrow column, not
+   the 2-column grid a wider spot could afford -- see
+   buildingInputsPanel.ts::renderOverrideControls's own docstring. */
 .override-controls {
-  margin-top: 14px;
-  padding: 10px;
+  padding: 14px;
   background: var(--panel-solid);
   border-radius: 8px;
   border: 1px solid var(--border);
+  position: sticky;
+  top: 0;
 }
 
 .override-controls h3 {
-  margin: 0 0 8px !important;
+  margin: 0 0 10px !important;
+  font-size: 0.85rem !important;
 }
 
 .override-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 10px;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .override-grid label {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
   font-size: 0.7rem;
   font-weight: 600;
@@ -670,10 +1025,10 @@ body,
 .override-grid select,
 .override-grid input {
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 400;
   text-transform: none;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: 5px;
   border: 1px solid var(--border-strong);
   background: var(--bg);
@@ -683,7 +1038,8 @@ body,
 
 .override-reset {
   margin-top: 10px;
-  font-size: 0.75rem;
+  width: 100%;
+  font-size: 0.72rem;
   background: none;
   border: 1px solid var(--border-strong);
   border-radius: 5px;
@@ -710,6 +1066,26 @@ body,
 
 .scenario-controls[open] summary {
   margin-bottom: 6px;
+}
+
+.scenario-controls summary:hover {
+  color: var(--text);
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--muted);
+  vertical-align: -1px;
 }
 
 .scenario-hint {
@@ -857,6 +1233,20 @@ body,
   margin-bottom: 6px;
 }
 
+/* Badge + its (on-hover) info-icon-button on one row -- see
+   renderVulnerabilitySummary's own comment for why this replaced a
+   standing paragraph below the badge. */
+.source-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.source-badge-row .source-badge {
+  margin-bottom: 0;
+}
+
 .source-badge-ml {
   background: var(--blue-bg);
   color: var(--blue-ink);
@@ -870,6 +1260,11 @@ body,
 .source-badge-fallback {
   background: var(--red-bg);
   color: var(--red-ink);
+}
+
+.source-badge-approx {
+  background: var(--amber-bg);
+  color: var(--amber-ink);
 }
 
 .estimated-badge {
@@ -912,6 +1307,156 @@ body,
 
 .ensemble-candidate-button:hover {
   background: var(--amber-bg);
+}
+
+/* Title + info button + toggle chips on one row (see renderCurvesOverlay
+   in vulnerabilityPanel.ts) -- wraps if a wide set of chips doesn't fit
+   next to the title on a narrower card. */
+.chart-card-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chart-card-header-row h3 {
+  margin: 0 !important;
+}
+
+.chart-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hover-only (native title tooltip, same pattern as .estimated-badge):
+   holds explanatory text that used to be a standing paragraph, freeing
+   the vertical space that cost this card versus its neighbor -- see
+   .chart-card-header-row's own comment. */
+.info-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--panel-solid);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-style: italic;
+  cursor: help;
+  padding: 0;
+}
+
+.info-icon-button:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.curve-toggle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* Deliberately compact (chip-sized, not full-width buttons): these can
+   run up to 1 (own) + 3 (MUR/MCF/MR) wide, and a full-width button per
+   source is exactly the "too long" the fragility-curve overlay redesign
+   was meant to get away from. */
+.curve-toggle-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.curve-toggle-chip.active {
+  border-color: var(--blue);
+  color: var(--blue-ink);
+  background: var(--blue-bg);
+}
+
+.chart-empty-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 24px 0;
+  text-align: center;
+}
+
+/* Model agreement table + class-confidence bars side by side (see
+   renderTypologyEnsemble in vulnerabilityPanel.ts) instead of stacked
+   full-width -- the two are read together, and stacking them cost
+   vertical space the drawer's fixed height can't spare. */
+.ensemble-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 6px;
+}
+
+.ensemble-col {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.class-probabilities-heading {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.class-probabilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 0 4px;
+}
+
+.class-probability-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 30px;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.class-probability-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.class-probability-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--blue-bg);
+  overflow: hidden;
+}
+
+.class-probability-fill {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+  border-radius: 4px;
+}
+
+.class-probability-value {
+  color: var(--muted);
+  text-align: right;
+}
+
+.class-probabilities-caption {
+  margin: 2px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
 }
 
 .prototype-notice {
