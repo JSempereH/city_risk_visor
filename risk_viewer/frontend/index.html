@@ -18,9 +18,36 @@
   <body>
     <div id="app">
       <div id="map"></div>
-      <button id="reorient-toggle" type="button" class="icon-button" aria-label="Reset map orientation" title="Reset map orientation">🧭</button>
+      <button id="typology-metrics-toggle" type="button" class="icon-button hidden" aria-label="Structural typology model quality" title="Structural typology model quality">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="19" x2="5" y2="11" />
+          <line x1="12" y1="19" x2="12" y2="5" />
+          <line x1="19" y1="19" x2="19" y2="14" />
+        </svg>
+      </button>
+      <button id="reorient-toggle" type="button" class="icon-button" aria-label="Reset map orientation" title="Reset map orientation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <polygon points="12,5 14,12 12,19 10,12" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
       <button id="view-3d-toggle" type="button" class="icon-button" aria-label="Toggle 3D buildings" title="Toggle 3D buildings">3D</button>
-      <button id="settings-toggle" type="button" class="icon-button" aria-label="Settings" title="Settings">⚙</button>
+      <button id="settings-toggle" type="button" class="icon-button" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <circle cx="9" cy="6" r="2" fill="currentColor" stroke="none" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+          <circle cx="7" cy="18" r="2" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+      <aside id="typology-metrics-panel" class="glass-panel hidden">
+        <div class="building-panel-actions">
+          <button id="typology-metrics-panel-close" aria-label="Close">&times;</button>
+        </div>
+        <div id="typology-metrics-panel-content"></div>
+      </aside>
       <aside id="settings-panel" class="glass-panel hidden">
         <div class="building-panel-actions">
           <button id="settings-panel-close" aria-label="Close">&times;</button>
@@ -49,7 +76,7 @@
 
           <div id="legend"></div>
           <div id="typology-quality"></div>
-          <p class="hint" id="mode-hint">Click a building to see its capacity &amp; fragility curves.</p>
+          <p class="hint hidden" id="mode-hint"></p>
         </div>
       </aside>
       <aside id="building-panel" class="glass-panel hidden">
