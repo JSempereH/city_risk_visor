@@ -58,7 +58,7 @@ and `footprint_area_m2` are computed automatically from geometry.
 ## Vulnerability tier compatibility
 
 - Confirm the city's `structural_system_class` values fall inside
-  ADO/CR/M/W: a new class fails loudly (`app/risk/casualty.py`'s
+  ADO/CR/M/MCF/MR/MUR/W: a new class fails loudly (`app/risk/casualty.py`'s
   `hazus_building_type()`) rather than being silently miscosted, so the
   test suite surfaces it after loading a new city's data.
 - The GPR capacity-curve model (masonry only) is already generic across
@@ -94,7 +94,7 @@ and `footprint_area_m2` are computed automatically from geometry.
 2. `uv run python scripts/precompute.py` to bake the new city's scenario
    combos.
 3. `uv run pytest -q`, should need no test changes for a city whose
-   taxonomy fits ADO/CR/M/W.
+   taxonomy fits ADO/CR/M/MCF/MR/MUR/W.
 4. Manual check in the browser: exposure layer renders, a scenario run
    completes, casualty/damage numbers are sane.
 
