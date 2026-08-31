@@ -26,18 +26,23 @@ count where HAZUS itself splits by height (Chapter 3, Table 3.1):
 - W (wood) -> W1, light wood frame. HAZUS gives W1 no height split.
 - CR (reinforced concrete) -> C1L/C1M/C1H, concrete moment frame, by
   story count (1-3 / 4-7 / 8+).
-- M, ADO, MUR, MCF, MR (all masonry, at every reinforcement level this
-  app distinguishes) -> URML/URMM, unreinforced masonry bearing walls,
-  by story count (1-2 / 3+). This is a deliberate simplification kept
-  even after MCF/MR got their own dedicated GEM *fragility* curves
-  (so how *likely* a confined/reinforced-masonry building is to reach a
-  given damage state is now realistic): HAZUS's own confined/reinforced
-  masonry types (RM1/RM2) have their own casualty-rate tables in the
-  manual, not sourced/transcribed into this module yet, so every masonry
-  sub-class still shares URML/URMM's rates *given* that damage state.
-  Confined or reinforced masonry would likely fare somewhat better than
-  these rates suggest at a given damage state, on top of already being
-  less likely to reach that state at all.
+- M, ADO, MUR (generic, adobe, and unreinforced masonry) -> URML/URMM,
+  unreinforced masonry bearing walls, by story count (1-2 / 3+).
+- MCF, MR (confined and reinforced masonry) -> RM1L/RM1M, reinforced
+  masonry bearing walls with wood or metal deck diaphragms, by story
+  count (1-3 / 4+; RM1 has no high-rise tier). RM1, not RM2 (precast
+  concrete diaphragms), since this app has no diaphragm-type attribute
+  to pick between them and the pilot cities' masonry stock is
+  residential with light (wood/metal) roof structures, not precast
+  concrete floor systems, the same light-construction assumption already
+  used for CR -> C1 and W -> W1 above. Confined masonry's cast-in-place
+  tie-columns/beams aren't a HAZUS model building type of their own;
+  RM1's reinforced-bearing-wall behavior is the closest match HAZUS
+  defines. Now that MCF/MR route here instead of sharing URML/URMM, both
+  the *likelihood* of reaching a given damage state (GEM fragility
+  curves, see gem_fragility.py) and the casualty rate *given* that
+  damage state reflect confined/reinforced masonry rather than
+  unreinforced masonry.
 """
 
 from __future__ import annotations
@@ -57,6 +62,8 @@ _MODERATE_RATES: dict[HazusBuildingType, tuple[float, float, float, float]] = {
     "C1L": (0.0025, 0.00030, 0.0, 0.0),
     "C1M": (0.0025, 0.00030, 0.0, 0.0),
     "C1H": (0.0025, 0.00030, 0.0, 0.0),
+    "RM1L": (0.0020, 0.00025, 0.0, 0.0),
+    "RM1M": (0.0020, 0.00025, 0.0, 0.0),
     "URML": (0.0035, 0.00400, 0.00001, 0.00001),
     "URMM": (0.0035, 0.00400, 0.00001, 0.00001),
 }
@@ -67,6 +74,8 @@ _EXTENSIVE_RATES: dict[HazusBuildingType, tuple[float, float, float, float]] = {
     "C1L": (0.01, 0.001, 0.00001, 0.00001),
     "C1M": (0.01, 0.001, 0.00001, 0.00001),
     "C1H": (0.01, 0.001, 0.00001, 0.00001),
+    "RM1L": (0.01, 0.001, 0.00001, 0.00001),
+    "RM1M": (0.01, 0.001, 0.00001, 0.00001),
     "URML": (0.02, 0.002, 0.00002, 0.00002),
     "URMM": (0.02, 0.002, 0.00002, 0.00002),
 }
@@ -77,6 +86,8 @@ _COMPLETE_NO_COLLAPSE_RATES: dict[HazusBuildingType, tuple[float, float, float, 
     "C1L": (0.05, 0.01, 0.0001, 0.0001),
     "C1M": (0.05, 0.01, 0.0001, 0.0001),
     "C1H": (0.05, 0.01, 0.0001, 0.0001),
+    "RM1L": (0.05, 0.01, 0.0001, 0.0001),
+    "RM1M": (0.05, 0.01, 0.0001, 0.0001),
     "URML": (0.10, 0.02, 0.0002, 0.0002),
     "URMM": (0.10, 0.02, 0.0002, 0.0002),
 }
@@ -87,6 +98,8 @@ _COMPLETE_WITH_COLLAPSE_RATES: dict[HazusBuildingType, tuple[float, float, float
     "C1L": (0.40, 0.20, 0.05, 0.10),
     "C1M": (0.40, 0.20, 0.05, 0.10),
     "C1H": (0.40, 0.20, 0.05, 0.10),
+    "RM1L": (0.40, 0.20, 0.05, 0.10),
+    "RM1M": (0.40, 0.20, 0.05, 0.10),
     "URML": (0.40, 0.20, 0.05, 0.10),
     "URMM": (0.40, 0.20, 0.05, 0.10),
 }
@@ -97,6 +110,8 @@ _COLLAPSE_PROBABILITY: dict[HazusBuildingType, float] = {
     "C1L": 0.13,
     "C1M": 0.10,
     "C1H": 0.05,
+    "RM1L": 0.13,
+    "RM1M": 0.10,
     "URML": 0.15,
     "URMM": 0.15,
 }
@@ -112,9 +127,12 @@ def hazus_building_type(structural_system_class: str, n_floors: float | None) ->
         if floors <= 7:
             return "C1M"
         return "C1H"
-    if structural_system_class in ("M", "ADO", "MUR", "MCF", "MR"):
-        # All masonry sub-classes map to unreinforced masonry. See module docstring.
+    if structural_system_class in ("M", "ADO", "MUR"):
+        # Unreinforced/generic masonry. See module docstring.
         return "URML" if floors <= 2 else "URMM"
+    if structural_system_class in ("MCF", "MR"):
+        # Confined/reinforced masonry. See module docstring.
+        return "RM1L" if floors <= 3 else "RM1M"
     # A new city's structural taxonomy (e.g. steel, hybrid) has no HAZUS
     # mapping decided for it yet, so fail loudly here rather than silently
     # costing it as masonry, which this module's tables were never
