@@ -22,10 +22,29 @@ export function initBuildingPanelControls(): void {
   document.getElementById("building-panel-close")?.addEventListener("click", closeBuildingPanel);
 }
 
+// Keeps the address bar a real shareable link to whatever's currently
+// selected (?city=X&building=Y), or just ?city=X once nothing is -- so
+// copying the URL (e.g. into a Marp slide) always reopens the same
+// building, and building ids (not unique across cities on their own,
+// see main.ts's own deep-link lookup) always travel paired with which
+// city they belong to. replaceState, not pushState: selecting a
+// building isn't a new "page" to go Back through, just this one's
+// current state.
+function syncSelectionToUrl(city: string | null, buildingId: string | null): void {
+  const params = new URLSearchParams(window.location.search);
+  if (city) params.set("city", city);
+  else params.delete("city");
+  if (buildingId) params.set("building", buildingId);
+  else params.delete("building");
+  const query = params.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+}
+
 export function closeBuildingPanel(): void {
   document.getElementById("building-panel")?.classList.add("hidden");
   document.getElementById("app")?.classList.remove("building-panel-open");
   state.selectedBuildingId = null;
+  syncSelectionToUrl(state.city, null);
   renderLayer();
 }
 
@@ -68,6 +87,7 @@ export function selectBuilding(id: string, properties: Record<string, unknown>):
   state.buildingOverrides = {};
   renderLayer();
   openBuildingPanel();
+  syncSelectionToUrl(String(properties.city ?? state.city ?? ""), id);
 
   const content = document.getElementById("building-panel-content");
   if (!content) return;
