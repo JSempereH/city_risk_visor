@@ -3,10 +3,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PickingInfo } from "@deck.gl/core";
 import { GeoJsonLayer, IconLayer, ScatterplotLayer } from "@deck.gl/layers";
-import { CONFIRMED_GLOW_COLOR, hexToRgb, sequentialColor, UNLABELED_COLOR } from "./colors";
+import { CONFIRMED_GLOW_COLOR, SELECTED_COLOR, hexToRgb, sequentialColor, UNLABELED_COLOR } from "./colors";
 import { formatTooltip, formatRiskTooltip, renderCategoricalLegend, renderSequentialLegend } from "./ui";
 import { activeData, activeLegendFor, activeNumericRange, isClampedAbove, state } from "./state";
 import { renderTypologyQuality } from "./typologyQualityPanel";
+import { updateTypologyMetricsAvailability } from "./typologyMetricsPanel";
 
 // CARTO Dark Matter: the dark counterpart to Positron, same OSM-derived
 // basemap family designed for data overlays (unlike a desaturation
@@ -136,10 +137,32 @@ function getElevation(feature: GeoJSON.Feature): number {
 /** Flips between the flat top-down view and a pitched view with
  * buildings extruded to their (exaggerated) real height. Tilting the
  * camera and switching the layer to extruded happen together since an
- * extruded layer viewed straight down looks the same as a flat one. */
+ * extruded layer viewed straight down looks the same as a flat one.
+ *
+ * If a building is selected, re-frames on it in the same camera move
+ * rather than just changing pitch in place: fitBounds computes a
+ * pitch-0 framing, so re-tilting afterward shifts what's actually
+ * visible (pitching effectively "tips" the view forward, moving a
+ * point that was centered toward the bottom of the screen) -- easily
+ * enough to push a single small building's own highlight
+ * (selectedOutlineLayers) off-screen entirely, behind the building
+ * drawer or past the frame edge. Combining the
+ * pitch change with a fresh fitBounds on that one building avoids ever
+ * computing a framing for the wrong pitch. */
 export function toggle3D(): void {
   state.is3D = !state.is3D;
-  map.easeTo({ pitch: state.is3D ? 50 : 0, duration: 500 });
+  const pitch = state.is3D ? 50 : 0;
+  const selected = state.selectedBuildingId ? activeData().features.find(isSelected) : null;
+  if (selected) {
+    map.fitBounds(computeBbox({ type: "FeatureCollection", features: [selected] }), {
+      pitch,
+      padding: 200,
+      maxZoom: 19,
+      duration: 500,
+    });
+  } else {
+    map.easeTo({ pitch, duration: 500 });
+  }
   renderLayer();
 }
 
@@ -181,7 +204,12 @@ function getFillColor(feature: GeoJSON.Feature): [number, number, number, number
 }
 
 function getLineColor(feature: GeoJSON.Feature): [number, number, number, number] {
-  if (isSelected(feature)) return [255, 255, 255, 255];
+  // Selection no longer marked here -- see selectedOutlineLayers() below,
+  // a dedicated overlay instead of a per-feature color/width branch on
+  // this shared layer, since the selected building needs a real halo
+  // (dark stroke behind the amber one) for contrast against fills as
+  // close in hue as this app's own CR/MR/W, which a same-layer accessor
+  // can't produce (one getLineColor per feature, no second pass under it).
   if (isConfirmedStructuralSystem(feature)) return [...hexToRgb(CONFIRMED_GLOW_COLOR), 235];
   // A light hairline, not a dark one: against the dark basemap this is
   // what keeps every footprint reading as a distinct shape, especially
@@ -190,7 +218,6 @@ function getLineColor(feature: GeoJSON.Feature): [number, number, number, number
 }
 
 function getLineWidth(feature: GeoJSON.Feature): number {
-  if (isSelected(feature)) return 3;
   return isConfirmedStructuralSystem(feature) ? 1.6 : 1;
 }
 
@@ -228,6 +255,71 @@ function confirmedGlowLayers(): GeoJsonLayer[] {
         lineWidthUnits: "pixels",
         getLineColor: [...hexToRgb(CONFIRMED_GLOW_COLOR), alpha],
         getLineWidth: lineWidth,
+      }),
+  );
+}
+
+// A dedicated overlay for the one selected building, not a color/width
+// branch on the shared buildings layer above: 3D needs a wide dark halo
+// under the amber line for contrast against a lit extruded volume (see
+// the passes below), which a single getLineColor/getLineWidth on the
+// shared layer can't produce (one color per feature, no second pass
+// under it). `extruded`/`wireframe` on when state.is3D mirrors the main
+// buildings layer exactly (same getElevation), so both passes trace
+// every edge of the actual 3D volume -- top, bottom, and every vertical
+// strut -- not just a footprint ring a taller neighbor, or the
+// building's own bulk from an oblique angle, could hide.
+//
+// `parameters: {depthTest: false}` is why this is a genuinely separate
+// overlay layer rather than just being drawn after the main buildings
+// layer in the array: with depth testing on, this outline's geometry
+// sits exactly coincident with the selected building's own solid
+// extruded faces (same footprint, same getElevation), which z-fights
+// with -- and in practice mostly loses to -- that opaque geometry, so
+// the outline was being computed correctly but rendered invisible
+// underneath the building's own surface. Disabling depth testing here
+// makes this layer composite on top unconditionally, which is exactly
+// what a selection indicator should do regardless of what else occupies
+// that same 3D space.
+function selectedOutlineLayers(): GeoJsonLayer[] {
+  if (!state.selectedBuildingId) return [];
+  const data = activeData();
+  const selectedData: GeoJSON.FeatureCollection = {
+    ...data,
+    features: data.features.filter(isSelected),
+  };
+  if (selectedData.features.length === 0) return [];
+
+  // 2D: amber alone -- a flat footprint outline already reads clearly
+  // on its own, and a dark halo under it just showed as an unwanted
+  // black border/fringe around the amber. 3D: the halo earns its keep
+  // there, tracing a whole extruded volume's edges against a lit,
+  // shaded surface (not a flat fill) is a harder contrast problem, and
+  // it's the same duplicate-outline trick confirmedGlowLayers uses
+  // above. Both widths thicker than their 2D counterparts: struts are
+  // short compared to a full footprint ring, so the same weight read
+  // as thinner in 3D.
+  const passes: [string, number][] = state.is3D
+    ? [
+        ["#0b0b0b", 15],
+        [SELECTED_COLOR, 9],
+      ]
+    : [[SELECTED_COLOR, 3]];
+  return passes.map(
+    ([color, lineWidth], index) =>
+      new GeoJsonLayer({
+        id: `selected-outline-${index}`,
+        data: selectedData,
+        filled: false,
+        stroked: true,
+        extruded: state.is3D,
+        wireframe: state.is3D,
+        getElevation,
+        pickable: false,
+        lineWidthUnits: "pixels",
+        getLineColor: [...hexToRgb(color), 255],
+        getLineWidth: lineWidth,
+        parameters: { depthTest: false },
       }),
   );
 }
@@ -376,6 +468,7 @@ export function renderLegend(): void {
   if (qualityContainer) {
     renderTypologyQuality(qualityContainer, state.city, state.attribute?.name);
   }
+  updateTypologyMetricsAvailability(state.city, state.attribute?.name);
 }
 
 function buildingTooltip({ object, layer, x, y, viewport }: PickingInfo) {
@@ -444,8 +537,8 @@ export function renderLayer(): void {
     lineWidthMinPixels: 1,
     updateTriggers: {
       getFillColor: [state.mode, state.attribute?.name, state.legend, state.numericRange, state.riskNumericRange],
-      getLineColor: [state.selectedBuildingId, state.attribute?.name],
-      getLineWidth: [state.selectedBuildingId, state.attribute?.name],
+      getLineColor: [state.attribute?.name],
+      getLineWidth: [state.attribute?.name],
       getElevation: [state.mode, state.city],
     },
     onClick: (info) => {
@@ -455,10 +548,12 @@ export function renderLayer(): void {
     },
   });
   const glow = confirmedGlowLayers();
+  const selectedOutline = selectedOutlineLayers();
   const epicenter = epicenterLayer();
-  // Glow layers first (painted under, see confirmedGlowLayers' own
-  // comment), the epicenter marker last (on top of buildings).
-  staticLayers = [...glow, geoJsonLayer, ...(epicenter ? [epicenter] : [])];
+  // Confirmed-glow under the buildings (see its own comment), the
+  // selected-building outline on top of them, epicenter marker last
+  // (always on top of everything).
+  staticLayers = [...glow, geoJsonLayer, ...selectedOutline, ...(epicenter ? [epicenter] : [])];
   commitLayers();
   renderLegend();
 }

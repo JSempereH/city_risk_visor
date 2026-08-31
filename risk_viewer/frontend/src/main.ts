@@ -4,6 +4,7 @@ import { initSegmentedControl, populateAttributeSelect, populateCitySelect, type
 import { initBuildingPanelControls, selectBuilding } from "./buildingController";
 import { computeBbox, map, renderLayer, resetOrientation, setBuildingClickHandler, toggle3D } from "./mapLayers";
 import { initSettingsPanel } from "./settingsPanel";
+import { initTypologyMetricsPanel } from "./typologyMetricsPanel";
 import {
   hideScenarioPanelForExposureMode,
   loadRiskForCity,
@@ -41,7 +42,7 @@ function selectMode(mode: Mode): void {
 
   if (mode === "exposure") {
     if (subtitle) subtitle.textContent = "Exposure & typology";
-    if (hint) hint.textContent = "Click a building to see its capacity & fragility curves.";
+    hint?.classList.add("hidden");
     hideScenarioPanelForExposureMode();
     setEpicenterPicking(false);
     applyAttributeOptionsForMode();
@@ -49,6 +50,7 @@ function selectMode(mode: Mode): void {
   } else {
     if (subtitle) subtitle.textContent = "Seismic risk scenario";
     if (hint) hint.textContent = "Adjustable scenario per city, see the panel above for sources and controls.";
+    hint?.classList.remove("hidden");
     applyAttributeOptionsForMode();
     const targetCity = state.city ?? state.exposureLayer?.cities[0] ?? null;
     if (targetCity && targetCity !== state.city) {
@@ -152,8 +154,16 @@ async function bootstrap(): Promise<void> {
   // background right after and replaces state.data once it lands, so
   // switching cities afterwards is still instant (filteredExposureData()
   // filtering client-side, no per-switch fetch).
+  //
+  // A `?city=` in the URL (see buildingController.ts's syncSelectionToUrl,
+  // which writes this same param on every building selection) overrides
+  // the default -- the whole point of a shareable building link is
+  // landing on the right city, not always san_jose.
   const DEFAULT_CITY = "san_jose";
-  const initialCity = layer.cities.includes(DEFAULT_CITY) ? DEFAULT_CITY : null;
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlCity = urlParams.get("city");
+  const requestedCity = urlCity && layer.cities.includes(urlCity) ? urlCity : DEFAULT_CITY;
+  const initialCity = layer.cities.includes(requestedCity) ? requestedCity : null;
 
   const [data, legend] = await Promise.all([
     fetchLayerData(layer.id, initialCity ?? undefined),
@@ -187,6 +197,7 @@ async function bootstrap(): Promise<void> {
 
   initBuildingPanelControls();
   initSettingsPanel(refreshExposureData);
+  initTypologyMetricsPanel();
 
   document.getElementById("controls-toggle")?.addEventListener("click", () => {
     document.getElementById("controls")?.classList.toggle("collapsed");
@@ -210,6 +221,32 @@ async function bootstrap(): Promise<void> {
   const initialData = state.city ? filteredExposureData() : data;
   map.fitBounds(computeBbox(initialData), { padding: 40, duration: 0 });
   renderLayer();
+
+  // `?building=` deep link (see buildingController.ts's syncSelectionToUrl):
+  // ids aren't unique across cities, only within one, so this only ever
+  // searches the just-loaded initialCity's own data, matching the
+  // `?city=` param resolved above -- a mismatched pair (a building id
+  // that doesn't belong to that city) just finds nothing and opens
+  // nothing, rather than guessing.
+  const urlBuildingId = urlParams.get("building");
+  if (urlBuildingId) {
+    const feature = data.features.find((f) => f.properties?.id === urlBuildingId);
+    if (feature?.properties) {
+      selectBuilding(urlBuildingId, feature.properties);
+      // Without this, the map above stays framed on the whole city (the
+      // fitBounds just above) and the selected building's own highlight
+      // (mapLayers.ts's selectedOutlineLayers) could be anywhere in that
+      // extent, effectively invisible until the visitor manually finds
+      // and zooms into it themselves -- defeating the point of a link
+      // meant to show one specific building. maxZoom keeps a single tiny
+      // footprint's own bbox from zooming in past street level.
+      map.fitBounds(computeBbox({ type: "FeatureCollection", features: [feature] }), {
+        padding: 200,
+        maxZoom: 19,
+        duration: 0,
+      });
+    }
+  }
 
   if (initialCity) {
     fetchLayerData(layer.id)
