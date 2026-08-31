@@ -1,9 +1,9 @@
 {
   "guatemala": {
     "city": "guatemala",
-    "n_predictions_csv": 302,
+    "n_predictions_csv": 433,
     "n_held_out_test": 103,
-    "n_held_out_dropped_missing": 0,
+    "n_held_out_dropped_missing": 12,
     "classes": [
       "ADO",
       "CR",
@@ -16,6 +16,25 @@
       "upper": 0.6712,
       "confidence": 0.95
     },
+    "ensemble_f1_weighted": 0.641,
+    "accuracy": 0.6699,
+    "confusion_matrix": [
+      [
+        23,
+        0,
+        12
+      ],
+      [
+        3,
+        3,
+        11
+      ],
+      [
+        7,
+        1,
+        43
+      ]
+    ],
     "inter_model_fleiss_kappa": 0.5227,
     "inter_model_fleiss_kappa_ci": {
       "lower": 0.4079,
@@ -25,8 +44,8 @@
   },
   "san_jose": {
     "city": "san_jose",
-    "n_predictions_csv": 655,
-    "n_held_out_test": 131,
+    "n_predictions_csv": 909,
+    "n_held_out_test": 132,
     "n_held_out_dropped_missing": 1,
     "classes": [
       "CR",
@@ -34,22 +53,41 @@
       "W"
     ],
     "has_ground_truth": true,
-    "ensemble_f1_macro": 0.5628,
+    "ensemble_f1_macro": 0.5632,
     "ensemble_f1_macro_ci": {
-      "lower": 0.4518,
-      "upper": 0.6695,
+      "lower": 0.4486,
+      "upper": 0.6727,
       "confidence": 0.95
     },
-    "inter_model_fleiss_kappa": 0.4746,
+    "ensemble_f1_weighted": 0.8127,
+    "accuracy": 0.7955,
+    "confusion_matrix": [
+      [
+        9,
+        5,
+        1
+      ],
+      [
+        5,
+        94,
+        11
+      ],
+      [
+        0,
+        5,
+        2
+      ]
+    ],
+    "inter_model_fleiss_kappa": 0.4753,
     "inter_model_fleiss_kappa_ci": {
-      "lower": 0.3388,
-      "upper": 0.6034,
+      "lower": 0.3403,
+      "upper": 0.6015,
       "confidence": 0.95
     }
   },
   "santo_domingo": {
     "city": "santo_domingo",
-    "n_predictions_csv": 1427,
+    "n_predictions_csv": 1447,
     "n_held_out_test": 155,
     "n_held_out_dropped_missing": 0,
     "classes": [
@@ -63,6 +101,18 @@
       "upper": 0.5196,
       "confidence": 0.95
     },
+    "ensemble_f1_weighted": 0.5076,
+    "accuracy": 0.4903,
+    "confusion_matrix": [
+      [
+        16,
+        31
+      ],
+      [
+        48,
+        60
+      ]
+    ],
     "inter_model_fleiss_kappa": 0.2726,
     "inter_model_fleiss_kappa_ci": {
       "lower": 0.1699,
