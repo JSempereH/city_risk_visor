@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional
 
-from app.config import ENSEMBLE_CITIES, HELD_OUT_METRICS_PATH, RISK_VIEWER_MODELS_DIR
+from app.config import ENSEMBLE_CITIES, FEATURE_IMPORTANCE_PATH, HELD_OUT_METRICS_PATH, RISK_VIEWER_MODELS_DIR
 
 MODEL_NAMES = ["LogisticRegression", "RandomForest", "XGBoost"]
 
@@ -130,6 +130,16 @@ class EnsembleQualityMetrics:
     has_ground_truth: bool
     ensemble_f1_macro: Optional[float]
     ensemble_f1_macro_ci: Optional[BootstrapCI]
+    # Weighted by each class's real share of this held-out sample, unlike
+    # ensemble_f1_macro above (every class weighted equally regardless of
+    # rarity); both None when has_ground_truth is False, same as
+    # ensemble_f1_macro.
+    ensemble_f1_weighted: Optional[float]
+    accuracy: Optional[float]
+    # Rows = true class, columns = predicted class, both ordered by
+    # `classes` above -- e.g. confusion_matrix[i][j] is how many buildings
+    # whose real class is classes[i] got predicted as classes[j].
+    confusion_matrix: Optional[list[list[int]]]
     inter_model_fleiss_kappa: float
     inter_model_fleiss_kappa_ci: BootstrapCI
 
@@ -157,6 +167,9 @@ def _load_held_out_metrics() -> dict[str, EnsembleQualityMetrics]:
             has_ground_truth=r["has_ground_truth"],
             ensemble_f1_macro=r["ensemble_f1_macro"],
             ensemble_f1_macro_ci=_ci_from_json(r["ensemble_f1_macro_ci"]),
+            ensemble_f1_weighted=r["ensemble_f1_weighted"],
+            accuracy=r["accuracy"],
+            confusion_matrix=r["confusion_matrix"],
             inter_model_fleiss_kappa=r["inter_model_fleiss_kappa"],
             inter_model_fleiss_kappa_ci=kappa_ci,
         )
@@ -165,3 +178,51 @@ def _load_held_out_metrics() -> dict[str, EnsembleQualityMetrics]:
 
 def get_ensemble_quality_metrics(city: str) -> Optional[EnsembleQualityMetrics]:
     return _load_held_out_metrics().get(city)
+
+
+@dataclass(frozen=True)
+class RankedFeature:
+    feature: str
+    # Mean rank position (1-based) of this feature across the ensemble's
+    # 3 models -- lower means the models more consistently rank it
+    # important (see ml_structural_system/explainability.py's own
+    # consensus-ranking docstring), not an importance score itself, so
+    # values aren't comparable across cities/models with different
+    # feature counts.
+    mean_rank: float
+
+
+@dataclass(frozen=True)
+class FeatureImportance:
+    """SHAP/built-in feature importances for one city's ensemble,
+    consensus-ranked across its 3 models. See ml_structural_system/
+    experiments/sjose_guatemala_sdomingo/risk_viewer_feature_importance.py
+    for how this was computed (against already-trained models, no
+    retraining) -- unlike EnsembleQualityMetrics above, this needs no
+    ground truth, so it's available even for lomas_centinela."""
+
+    city: str
+    n_samples: int
+    consensus_ranking: list[RankedFeature]
+
+
+@lru_cache(maxsize=1)
+def _load_feature_importance() -> dict[str, FeatureImportance]:
+    if not FEATURE_IMPORTANCE_PATH.exists():
+        return {}
+    with open(FEATURE_IMPORTANCE_PATH) as f:
+        raw = json.load(f)
+    return {
+        city: FeatureImportance(
+            city=city,
+            n_samples=r["n_samples"],
+            consensus_ranking=[
+                RankedFeature(feature=f["feature"], mean_rank=f["mean_rank"]) for f in r["consensus_ranking"]
+            ],
+        )
+        for city, r in raw.items()
+    }
+
+
+def get_feature_importance(city: str) -> Optional[FeatureImportance]:
+    return _load_feature_importance().get(city)

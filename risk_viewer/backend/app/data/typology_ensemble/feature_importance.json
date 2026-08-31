@@ -1,0 +1,506 @@
+{
+  "guatemala": {
+    "city": "guatemala",
+    "n_samples": 1056,
+    "consensus_ranking": [
+      {
+        "feature": "height",
+        "mean_rank": 1.0
+      },
+      {
+        "feature": "n_floors",
+        "mean_rank": 6.67
+      },
+      {
+        "feature": "GNDTII_beta4_eccentricityRatio",
+        "mean_rank": 10.0
+      },
+      {
+        "feature": "GNDTII_beta2_setbackRatio",
+        "mean_rank": 10.0
+      },
+      {
+        "feature": "roof_material_metallic",
+        "mean_rank": 11.0
+      },
+      {
+        "feature": "slenderness_inertia",
+        "mean_rank": 11.0
+      },
+      {
+        "feature": "contact_confinementRatio",
+        "mean_rank": 12.33
+      },
+      {
+        "feature": "relativePosition_lateral",
+        "mean_rank": 12.67
+      },
+      {
+        "feature": "CSCR2010_eccentricityRatio",
+        "mean_rank": 13.0
+      },
+      {
+        "feature": "contact_force",
+        "mean_rank": 13.33
+      }
+    ],
+    "per_model": [
+      {
+        "model_name": "LogisticRegression",
+        "method": "coef_abs",
+        "top_features": [
+          {
+            "feature": "n_floors",
+            "importance": 8.4426
+          },
+          {
+            "feature": "height",
+            "importance": 7.9655
+          },
+          {
+            "feature": "code_quality",
+            "importance": 0.5236
+          },
+          {
+            "feature": "CSCR2010_eccentricityRatio",
+            "importance": 0.4815
+          },
+          {
+            "feature": "inertia_circle_ratio",
+            "importance": 0.4439
+          }
+        ]
+      },
+      {
+        "model_name": "RandomForest",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "height",
+            "importance": 0.1636
+          },
+          {
+            "feature": "n_floors",
+            "importance": 0.162
+          },
+          {
+            "feature": "EC8_radiusRatio",
+            "importance": 0.0655
+          },
+          {
+            "feature": "ASCE7_parallelityAngle",
+            "importance": 0.0496
+          },
+          {
+            "feature": "contact_angle",
+            "importance": 0.0429
+          }
+        ]
+      },
+      {
+        "model_name": "XGBoost",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "height",
+            "importance": 0.2042
+          },
+          {
+            "feature": "n_floors",
+            "importance": 0.1819
+          },
+          {
+            "feature": "ASCE7_holeRatio",
+            "importance": 0.0814
+          },
+          {
+            "feature": "code_quality",
+            "importance": 0.0338
+          },
+          {
+            "feature": "relativePosition_corner",
+            "importance": 0.0313
+          }
+        ]
+      }
+    ]
+  },
+  "san_jose": {
+    "city": "san_jose",
+    "n_samples": 1569,
+    "consensus_ranking": [
+      {
+        "feature": "n_floors",
+        "mean_rank": 1.67
+      },
+      {
+        "feature": "roof_material_metallic",
+        "mean_rank": 5.67
+      },
+      {
+        "feature": "EC8_compactness",
+        "mean_rank": 8.0
+      },
+      {
+        "feature": "relativePosition_corner",
+        "mean_rank": 8.33
+      },
+      {
+        "feature": "GNDTII_beta6_setbackSlenderness",
+        "mean_rank": 9.67
+      },
+      {
+        "feature": "contact_angularAcc",
+        "mean_rank": 11.33
+      },
+      {
+        "feature": "GNDTII_beta1_mainShapeSlenderness",
+        "mean_rank": 12.0
+      },
+      {
+        "feature": "ASCE7_holeRatio",
+        "mean_rank": 12.0
+      },
+      {
+        "feature": "contact_angle",
+        "mean_rank": 12.33
+      },
+      {
+        "feature": "inertia_circle_ratio",
+        "mean_rank": 13.0
+      }
+    ],
+    "per_model": [
+      {
+        "model_name": "LogisticRegression",
+        "method": "coef_abs",
+        "top_features": [
+          {
+            "feature": "n_floors",
+            "importance": 4.2542
+          },
+          {
+            "feature": "height",
+            "importance": 3.8102
+          },
+          {
+            "feature": "NTC23_holeRatio",
+            "importance": 1.4149
+          },
+          {
+            "feature": "ASCE7_holeRatio",
+            "importance": 1.3321
+          },
+          {
+            "feature": "roof_material_metallic",
+            "importance": 0.651
+          }
+        ]
+      },
+      {
+        "model_name": "RandomForest",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "EC8_radiusRatio",
+            "importance": 0.1044
+          },
+          {
+            "feature": "n_floors",
+            "importance": 0.0827
+          },
+          {
+            "feature": "height",
+            "importance": 0.0759
+          },
+          {
+            "feature": "ASCE7_parallelityAngle",
+            "importance": 0.06
+          },
+          {
+            "feature": "contact_angularAcc",
+            "importance": 0.052
+          }
+        ]
+      },
+      {
+        "model_name": "XGBoost",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "n_floors",
+            "importance": 0.2044
+          },
+          {
+            "feature": "height",
+            "importance": 0.1111
+          },
+          {
+            "feature": "NTC23_holeRatio",
+            "importance": 0.0696
+          },
+          {
+            "feature": "ASCE7_holeRatio",
+            "importance": 0.0579
+          },
+          {
+            "feature": "roof_material_metallic",
+            "importance": 0.0508
+          }
+        ]
+      }
+    ]
+  },
+  "santo_domingo": {
+    "city": "santo_domingo",
+    "n_samples": 157,
+    "consensus_ranking": [
+      {
+        "feature": "GNDTII_beta1_mainShapeSlenderness",
+        "mean_rank": 4.0
+      },
+      {
+        "feature": "GNDTII_beta6_setbackSlenderness",
+        "mean_rank": 7.0
+      },
+      {
+        "feature": "contact_angularAcc",
+        "mean_rank": 8.0
+      },
+      {
+        "feature": "relativePosition_corner",
+        "mean_rank": 10.67
+      },
+      {
+        "feature": "contact_angle",
+        "mean_rank": 11.0
+      },
+      {
+        "feature": "roof_material_metallic",
+        "mean_rank": 12.0
+      },
+      {
+        "feature": "convex_hull_irregularity",
+        "mean_rank": 12.0
+      },
+      {
+        "feature": "slenderness_bbox",
+        "mean_rank": 12.67
+      },
+      {
+        "feature": "EC8_compactness",
+        "mean_rank": 12.67
+      },
+      {
+        "feature": "height",
+        "mean_rank": 12.67
+      }
+    ],
+    "per_model": [
+      {
+        "model_name": "LogisticRegression",
+        "method": "coef_abs",
+        "top_features": [
+          {
+            "feature": "CSCR2010_eccentricityRatio",
+            "importance": 1.7832
+          },
+          {
+            "feature": "contact_force",
+            "importance": 1.6022
+          },
+          {
+            "feature": "relativePosition_lateral",
+            "importance": 1.5692
+          },
+          {
+            "feature": "polsby_popper",
+            "importance": 1.3993
+          },
+          {
+            "feature": "EC8_eccentricityRatio",
+            "importance": 1.2584
+          }
+        ]
+      },
+      {
+        "model_name": "RandomForest",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "EC8_radiusRatio",
+            "importance": 0.0655
+          },
+          {
+            "feature": "height",
+            "importance": 0.0617
+          },
+          {
+            "feature": "EC8_eccentricityRatio",
+            "importance": 0.0591
+          },
+          {
+            "feature": "ASCE7_parallelityAngle",
+            "importance": 0.0568
+          },
+          {
+            "feature": "CSCR2010_eccentricityRatio",
+            "importance": 0.0564
+          }
+        ]
+      },
+      {
+        "model_name": "XGBoost",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "relativePosition_corner",
+            "importance": 0.1335
+          },
+          {
+            "feature": "GNDTII_beta2_setbackRatio",
+            "importance": 0.0693
+          },
+          {
+            "feature": "contact_confinementRatio",
+            "importance": 0.0676
+          },
+          {
+            "feature": "relativePosition_lateral",
+            "importance": 0.0461
+          },
+          {
+            "feature": "contact_angularAcc",
+            "importance": 0.0418
+          }
+        ]
+      }
+    ]
+  },
+  "lomas_centinela": {
+    "city": "lomas_centinela",
+    "n_samples": 2837,
+    "consensus_ranking": [
+      {
+        "feature": "year",
+        "mean_rank": 4.0
+      },
+      {
+        "feature": "height",
+        "mean_rank": 4.0
+      },
+      {
+        "feature": "code_quality",
+        "mean_rank": 7.0
+      },
+      {
+        "feature": "contact_force",
+        "mean_rank": 7.67
+      },
+      {
+        "feature": "slenderness_bbox",
+        "mean_rank": 9.33
+      },
+      {
+        "feature": "polsby_popper",
+        "mean_rank": 9.67
+      },
+      {
+        "feature": "NTC23_setbackRatio",
+        "mean_rank": 11.33
+      },
+      {
+        "feature": "GNDTII_beta1_mainShapeSlenderness",
+        "mean_rank": 13.33
+      },
+      {
+        "feature": "ASCE7_parallelityAngle",
+        "mean_rank": 13.67
+      },
+      {
+        "feature": "slenderness_inertia",
+        "mean_rank": 14.0
+      }
+    ],
+    "per_model": [
+      {
+        "model_name": "LogisticRegression",
+        "method": "coef_abs",
+        "top_features": [
+          {
+            "feature": "code_quality",
+            "importance": 2.5954
+          },
+          {
+            "feature": "year",
+            "importance": 1.9479
+          },
+          {
+            "feature": "slenderness_bbox",
+            "importance": 0.601
+          },
+          {
+            "feature": "convex_hull_irregularity",
+            "importance": 0.5881
+          },
+          {
+            "feature": "CSCR2010_eccentricityRatio",
+            "importance": 0.5262
+          }
+        ]
+      },
+      {
+        "model_name": "RandomForest",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "year",
+            "importance": 0.4317
+          },
+          {
+            "feature": "height",
+            "importance": 0.1568
+          },
+          {
+            "feature": "code_quality",
+            "importance": 0.1141
+          },
+          {
+            "feature": "n_floors",
+            "importance": 0.0857
+          },
+          {
+            "feature": "ASCE7_parallelityAngle",
+            "importance": 0.0336
+          }
+        ]
+      },
+      {
+        "model_name": "XGBoost",
+        "method": "built_in",
+        "top_features": [
+          {
+            "feature": "year",
+            "importance": 0.2009
+          },
+          {
+            "feature": "code_quality",
+            "importance": 0.1554
+          },
+          {
+            "feature": "height",
+            "importance": 0.1118
+          },
+          {
+            "feature": "n_floors",
+            "importance": 0.0738
+          },
+          {
+            "feature": "ASCE7_parallelityAngle",
+            "importance": 0.0245
+          }
+        ]
+      }
+    ]
+  }
+}

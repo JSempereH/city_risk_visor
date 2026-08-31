@@ -70,3 +70,10 @@ ENSEMBLE_CITIES = [city for city in CITIES if (RISK_VIEWER_MODELS_DIR / city / "
 # restricts to a small held-out subset of predictions.csv, and
 # app/typology_ensemble/loader.py for how it's read.
 HELD_OUT_METRICS_PATH = RISK_VIEWER_MODELS_DIR / "held_out_metrics.json"
+
+# SHAP/built-in feature importances per city, consensus-ranked across the
+# 3-model ensemble. See ml_structural_system/experiments/
+# sjose_guatemala_sdomingo/risk_viewer_feature_importance.py for how this
+# was computed (against each city's already-trained models, no
+# retraining) and app/typology_ensemble/loader.py for how it's read.
+FEATURE_IMPORTANCE_PATH = RISK_VIEWER_MODELS_DIR / "feature_importance.json"

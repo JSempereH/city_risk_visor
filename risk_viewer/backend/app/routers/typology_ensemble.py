@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.typology_ensemble import get_ensemble_quality_metrics
+from app.typology_ensemble import get_ensemble_quality_metrics, get_feature_importance
 
 router = APIRouter(prefix="/api/typology_ensemble", tags=["typology_ensemble"])
 
@@ -34,6 +34,21 @@ def ensemble_quality(city: str) -> dict:
         "has_ground_truth": metrics.has_ground_truth,
         "ensemble_f1_macro": metrics.ensemble_f1_macro,
         "ensemble_f1_macro_ci": _ci_json(metrics.ensemble_f1_macro_ci),
+        "ensemble_f1_weighted": metrics.ensemble_f1_weighted,
+        "accuracy": metrics.accuracy,
+        "confusion_matrix": metrics.confusion_matrix,
         "inter_model_fleiss_kappa": metrics.inter_model_fleiss_kappa,
         "inter_model_fleiss_kappa_ci": _ci_json(metrics.inter_model_fleiss_kappa_ci),
+    }
+
+
+@router.get("/{city}/feature_importance")
+def feature_importance(city: str) -> dict:
+    result = get_feature_importance(city)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"No feature importance available for city: {city}.")
+    return {
+        "city": result.city,
+        "n_samples": result.n_samples,
+        "consensus_ranking": [{"feature": f.feature, "mean_rank": f.mean_rank} for f in result.consensus_ranking],
     }
