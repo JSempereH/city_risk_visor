@@ -88,6 +88,27 @@ actual return periods (475/975/2475yr) sit at PoE ~4e-4 to 2e-3, many
 orders of magnitude above where this happens (see
 `tests/test_psha.py::test_percentile_bands_bracket_mean`).
 
+## Independent validation for the 3 cities with no published curve
+
+San Jose validates against its own source model's published curve
+(see `docs/psha_plan.md`). Guatemala City, Santo Domingo, and Lomas del
+Centinela don't have one at their exact site, so instead:
+
+```bash
+uv run python scripts/psha/validate_independent.py            # all 3
+uv run python scripts/psha/validate_independent.py guatemala  # one city
+```
+
+downloads the best independently published estimate this project could
+find for each site (a paper, a thesis, a conference abstract; full
+citations and reasoning are in `validate_independent.py`'s own
+docstrings) into `_raw_validation/{city}/` (gitignored, re-fetched on
+demand), parses the comparison value(s) out of it, and prints a
+comparison against this project's own precomputed curve. Requires
+`pdftotext` (poppler-utils) on PATH. Results are written up in
+`docs/psha_plan.md`'s Validation section; the same numbers are locked
+in offline (no network) as regression tests in `tests/test_psha.py`.
+
 ## Other data pipelines
 
 `app/data/vs30/*.csv` and `app/data/population/*.csv` have their own
