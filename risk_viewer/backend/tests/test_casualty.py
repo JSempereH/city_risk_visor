@@ -12,8 +12,10 @@ def test_hazus_building_type_mapping():
     assert hazus_building_type("M", 5) == "URMM"
     assert hazus_building_type("ADO", 1) == "URML"
     assert hazus_building_type("MUR", 1) == "URML"
-    assert hazus_building_type("MCF", 1) == "URML"
-    assert hazus_building_type("MR", 5) == "URMM"
+    assert hazus_building_type("MCF", 1) == "RM1L"
+    assert hazus_building_type("MCF", 3) == "RM1L"
+    assert hazus_building_type("MCF", 4) == "RM1M"
+    assert hazus_building_type("MR", 5) == "RM1M"
 
 
 def test_hazus_building_type_unknown_class_raises():
@@ -41,3 +43,12 @@ def test_fatalities_never_exceed_total():
 def test_no_damage_gives_zero_casualties():
     estimate = expected_casualties("W", 1, {"none": 1.0}, 100.0)
     assert estimate.total == 0.0
+
+
+def test_confined_masonry_casualties_differ_from_unreinforced():
+    # Regression guard for the RM1 rollout: MCF/MR must no longer share
+    # URML/URMM's rates given a damage state (see module docstring).
+    damage = {"moderate": 0.5, "complete": 0.5}
+    unreinforced = expected_casualties("MUR", 2, damage, 100.0)
+    confined = expected_casualties("MCF", 2, damage, 100.0)
+    assert confined.total != unreinforced.total

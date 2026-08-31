@@ -126,3 +126,49 @@ def test_sa_increases_with_return_period_other_cities(city):
     ]
     assert values == sorted(values)
     assert values[0] > 0
+
+
+# Independent-source cross-checks for the 3 cities with no published curve
+# at their exact site (see docs/psha_plan.md's Validation section). Values
+# below are reproduced from scripts/psha/validate_independent.py, which
+# fetches and parses the underlying sources at run time; these tests
+# hardcode the same numbers so this regression check runs offline in CI
+# (no network, no pdftotext) rather than re-fetching every run.
+
+
+def test_guatemala_disaggregation_near_field_mode_matches_published_control_earthquake():
+    # Gamboa-Cante et al. (2025), Geosciences 15(11):427 (KUKAHPAN-25
+    # regional model): Guatemala City's 475yr PGA control earthquake is
+    # Mw 6.5-7.0, R 20-30km. This project's own 475yr PGA disaggregation
+    # is bimodal (see scripts/psha/validate_independent.py's note); its
+    # near-field mode (single largest bin) is the comparable one.
+    disagg = psha.disaggregation("guatemala", 475)
+    assert disagg is not None
+    bins = disagg["bins"]  # type: ignore[index]
+    top_bin = max(bins, key=lambda b: b["fraction"])  # type: ignore[arg-type]
+    assert 6.0 <= top_bin["mag_bin"] <= 7.5
+    assert top_bin["dist_bin"] <= 40.0
+
+
+def test_santo_domingo_2475yr_pga_matches_published_estimate():
+    # Johnson et al. (2023), EGU23-13313 abstract (CC BY 4.0): Santo
+    # Domingo's PGA at 2% probability of exceedance in 50yr (2475yr) is
+    # "~0.5g". A single order-of-magnitude point, not a full curve.
+    published_pga = 0.5
+    our_pga = psha.sa_by_period_for_return_period("santo_domingo", 2475)[0.01]
+    assert abs(our_pga - published_pga) / published_pga < 0.10
+
+
+def test_lomas_centinela_pga_lower_than_published_mexican_sources():
+    # Buenrostro Orozco (2017) UAM thesis: PRODISISv4.1 (CFE's official
+    # 2015 hazard tool) gives 0.23g/0.54g at 475/2475yr for a ZMG site
+    # ~7.8km from Lomas del Centinela; the thesis's own EZ-FRISK PSHA
+    # gives 0.173g at 475yr for a closer (~3.5km) point. This project's
+    # own curve reads consistently *lower* than both, a real,
+    # unresolved discrepancy (see docs/psha_plan.md), not a match. This
+    # test locks in that known gap so it's visible if it changes.
+    our_475 = psha.sa_by_period_for_return_period("lomas_centinela", 475)[0.01]
+    our_2475 = psha.sa_by_period_for_return_period("lomas_centinela", 2475)[0.01]
+    assert our_475 < 0.173  # thesis's own EZ-FRISK value, closest site
+    assert our_475 < 0.23  # PRODISIS/CFE 2015, official
+    assert our_2475 < 0.54  # PRODISIS/CFE 2015, official
