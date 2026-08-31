@@ -166,8 +166,13 @@ cd backend && uv run pytest
 ## Data notes
 
 - `structural_system_class` collapses the raw `structural_system` value
-  into 4 classes (`ADO`, `CR`, `M`, `W`), with an explicit `unlabeled`
-  bucket so every building still renders even with no usable class.
+  into 7 classes (`ADO`, `CR`, `M`, `MCF`, `MR`, `MUR`, `W`), with an
+  explicit `unlabeled` bucket so every building still renders even with
+  no usable class. `MCF`/`MR`/`MUR` (GEM Building Taxonomy's confined/
+  reinforced/unreinforced masonry codes) are kept distinct rather than
+  folded into the generic `M` bucket, so each routes to its own
+  published GEM fragility curve instead of the ML capacity-model tier's
+  best-quality-masonry default.
 - The exposure dataset (~2811 features) is served as one GeoJSON blob,
   no tiling or pagination.
 - `relative_position` (isolated, lateral, corner, confined, torque) is
