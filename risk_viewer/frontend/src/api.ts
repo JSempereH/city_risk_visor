@@ -471,3 +471,48 @@ export function clearTypologyPrior(city: string): Promise<{ city: string; cleare
   return deleteRequest<{ city: string; cleared: boolean }>(`/api/cities/${encodeURIComponent(city)}/typology_prior`);
 }
 
+export interface BootstrapCI {
+  lower: number;
+  upper: number;
+  confidence: number;
+}
+
+export interface EnsembleQuality {
+  city: string;
+  n_predictions_csv: number;
+  n_held_out_test: number;
+  classes: string[];
+  has_ground_truth: boolean;
+  ensemble_f1_macro: number | null;
+  ensemble_f1_macro_ci: BootstrapCI | null;
+  ensemble_f1_weighted: number | null;
+  accuracy: number | null;
+  // Rows = true class, columns = predicted class, both ordered by
+  // `classes` above.
+  confusion_matrix: number[][] | null;
+  inter_model_fleiss_kappa: number;
+  inter_model_fleiss_kappa_ci: BootstrapCI;
+}
+
+export function fetchEnsembleQuality(city: string): Promise<EnsembleQuality> {
+  return getJson<EnsembleQuality>(`/api/typology_ensemble/${encodeURIComponent(city)}/quality`);
+}
+
+export interface RankedFeature {
+  feature: string;
+  // Mean rank position (1-based) across the ensemble's 3 models -- lower
+  // means more consistently important, not a normalized importance
+  // score, so it isn't comparable across cities.
+  mean_rank: number;
+}
+
+export interface FeatureImportance {
+  city: string;
+  n_samples: number;
+  consensus_ranking: RankedFeature[];
+}
+
+export function fetchFeatureImportance(city: string): Promise<FeatureImportance> {
+  return getJson<FeatureImportance>(`/api/typology_ensemble/${encodeURIComponent(city)}/feature_importance`);
+}
+
