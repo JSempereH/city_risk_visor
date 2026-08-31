@@ -13,6 +13,11 @@ app/data/precomputed/
 # committed.
 scripts/psha/_raw/
 
+# Downloaded independent-validation source papers/theses (see
+# scripts/psha/README.md and validate_independent.py): a few MB each,
+# re-fetched on demand, not committed.
+scripts/psha/_raw_validation/
+
 # Downloaded rasters (see scripts/geodata/README.md): a few MB per
 # country, re-fetched/streamed by the build_*.py scripts, not committed.
 scripts/geodata/_raw/
