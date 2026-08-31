@@ -81,6 +81,24 @@ body,
   transition: width 0.2s ease, height 0.2s ease, padding 0.2s ease;
 }
 
+/* Shared by every top-right icon button (#settings-toggle,
+   #reorient-toggle, #typology-metrics-toggle): centers whatever's inside
+   -- an inline SVG glyph for these three, plain "3D" text for
+   #view-3d-toggle -- and gives each glyph a consistent size. SVGs use
+   stroke/fill="currentColor" so they automatically pick up each button's
+   own `color` (including the amber .active state), no separate icon
+   color rule needed. */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* Top-right gear, opens #settings-panel as a flyout anchored below it --
    deliberately its own top-level control, not nested inside #controls,
    since it's meant to hold app-wide settings (today: the typology
@@ -156,6 +174,154 @@ body,
 
 #reorient-toggle:hover {
   background: rgba(255, 255, 255, 0.07);
+}
+
+/* Left of the reorient button, same row of top-right icon buttons. Only
+   shown while the map is actually colored by structural system and a
+   specific city is selected (see typologyMetricsPanel.ts's own
+   updateTypologyMetricsAvailability) -- "model quality" has no clear
+   subject otherwise. */
+#typology-metrics-toggle {
+  position: absolute;
+  top: 16px;
+  right: 160px;
+  z-index: 11;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--panel-solid);
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#typology-metrics-toggle:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Anchored under its own button (see #typology-metrics-toggle above),
+   not the shared #settings-panel slot: wide enough that the confusion
+   matrix and stats table both fit without the panel ever needing to
+   scroll, for a city with up to the largest class count seen so far
+   (4 classes). */
+#typology-metrics-panel {
+  position: absolute;
+  top: 62px;
+  right: 16px;
+  z-index: 12;
+  width: 460px;
+  max-height: calc(100vh - 78px);
+  overflow-y: auto;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+#typology-metrics-panel.hidden {
+  display: none;
+}
+
+.typology-metrics-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 14px;
+}
+
+.typology-metrics-tabs button {
+  flex: 1;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.typology-metrics-tabs button.active {
+  background: var(--amber);
+  color: var(--amber-ink-dark);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.feature-importance-wrap {
+  margin-top: 4px;
+}
+
+.feature-importance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feature-importance-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.feature-importance-label {
+  font-size: 0.76rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-importance-bar-track {
+  height: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.feature-importance-bar {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 4px;
+}
+
+.confusion-matrix-wrap {
+  margin-top: 14px;
+}
+
+.confusion-matrix-heading {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  color: var(--faint);
+  line-height: 1.4;
+}
+
+.confusion-matrix {
+  border-collapse: separate;
+  border-spacing: 4px;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.confusion-matrix th,
+.confusion-matrix td {
+  text-align: center;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.confusion-matrix th {
+  font-weight: 500;
+  color: var(--muted);
+  padding: 4px;
+}
+
+/* aspect-ratio, not a fixed height: keeps each cell a real square across
+   however many classes a city has (2-4), rather than reading as
+   squashed rows the way plain cell padding did. */
+.confusion-matrix td {
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  font-weight: 600;
 }
 
 #settings-panel {
