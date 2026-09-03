@@ -1,4 +1,4 @@
-import { MapLibreMap, type StyleSpecification, type LngLatBoundsLike } from "maplibre-gl";
+import { MapLibreMap, type LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PickingInfo } from "@deck.gl/core";
@@ -9,27 +9,17 @@ import { activeData, activeLegendFor, activeNumericRange, isClampedAbove, state 
 import { renderTypologyQuality } from "./typologyQualityPanel";
 import { updateTypologyMetricsAvailability } from "./typologyMetricsPanel";
 
-// CARTO Dark Matter: the dark counterpart to Positron, same OSM-derived
-// basemap family designed for data overlays (unlike a desaturation
-// filter forced onto the standard colorful OSM tiles, which reads as
-// muddy). Free, no API key needed, same terms as the light style it
-// replaces. https://github.com/CartoDB/basemap-styles
-const OSM_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    },
-  },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
-};
+// OpenFreeMap's hosted "dark" style: OSM-derived vector tiles designed
+// for data overlays, free and unlimited with no API key or account
+// (unlike CARTO's basemaps.cartocdn.com, switched away from here after
+// CARTO started requiring a key and watermarking unauthenticated raster
+// tiles with "API KEY REQUIRED" instead of erroring outright).
+// https://openfreemap.org
+const BASEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
 
 export const map = new MapLibreMap({
   container: "map",
-  style: OSM_STYLE,
+  style: BASEMAP_STYLE_URL,
   center: [-82, 13],
   zoom: 4,
   // Negated from MapLibre's own default (0.8): reported as feeling
