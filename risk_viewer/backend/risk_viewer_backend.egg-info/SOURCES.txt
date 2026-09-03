@@ -44,7 +44,9 @@ app/vulnerability/building_mapping.py
 app/vulnerability/capacity_model.py
 app/vulnerability/feature_encoding.py
 app/vulnerability/fragility.py
+app/vulnerability/gem_capacity.py
 app/vulnerability/gem_fragility.py
+app/vulnerability/gem_taxonomy.py
 app/vulnerability/published_fallback.py
 app/vulnerability/service.py
 app/vulnerability/spectral.py
@@ -59,6 +61,7 @@ tests/test_cities.py
 tests/test_colors.py
 tests/test_data_loader.py
 tests/test_disaggregation.py
+tests/test_gem_capacity.py
 tests/test_gem_fragility.py
 tests/test_hazard.py
 tests/test_monte_carlo.py

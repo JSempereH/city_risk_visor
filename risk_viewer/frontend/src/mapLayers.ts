@@ -9,35 +9,66 @@ import { activeData, activeLegendFor, activeNumericRange, isClampedAbove, state 
 import { renderTypologyQuality } from "./typologyQualityPanel";
 import { updateTypologyMetricsAvailability } from "./typologyMetricsPanel";
 
-// CARTO Dark Matter: the dark counterpart to Positron, same OSM-derived
-// basemap family designed for data overlays (unlike a desaturation
-// filter forced onto the standard colorful OSM tiles, which reads as
-// muddy). Free, no API key needed, same terms as the light style it
-// replaces. https://github.com/CartoDB/basemap-styles
-const OSM_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+function rasterStyle(tiles: string[], attribution: string): StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      basemap: { type: "raster", tiles, tileSize: 256, attribution },
     },
+    layers: [{ id: "basemap", type: "raster", source: "basemap" }],
+  };
+}
+
+// OpenFreeMap's hosted vector styles (free, no API key, no rate limit:
+// https://openfreemap.org). Passing the style URL directly lets MapLibre
+// fetch and keep the style spec up to date rather than us vendoring it.
+export const BASEMAPS: Record<string, { label: string; style: string | StyleSpecification }> = {
+  positron: { label: "Positron (light)", style: "https://tiles.openfreemap.org/styles/positron" },
+  liberty: { label: "Liberty", style: "https://tiles.openfreemap.org/styles/liberty" },
+  bright: { label: "Bright", style: "https://tiles.openfreemap.org/styles/bright" },
+  dark: { label: "Dark", style: "https://tiles.openfreemap.org/styles/dark" },
+  fiord: { label: "Fiord", style: "https://tiles.openfreemap.org/styles/fiord" },
+  esriSatellite: {
+    label: "Esri Satellite",
+    style: rasterStyle(
+      ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      "&copy; Esri, Maxar, Earthstar Geographics",
+    ),
   },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
+  googleSatellite: {
+    label: "Google Satellite",
+    style: rasterStyle(
+      ["https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", "https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", "https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"],
+      "&copy; Google",
+    ),
+  },
+  googleHybrid: {
+    label: "Google Hybrid",
+    style: rasterStyle(
+      ["https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", "https://mt2.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", "https://mt3.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"],
+      "&copy; Google",
+    ),
+  },
 };
+
+export const DEFAULT_BASEMAP = "dark";
 
 export const map = new MapLibreMap({
   container: "map",
-  style: OSM_STYLE,
+  style: BASEMAPS[DEFAULT_BASEMAP].style,
   center: [-82, 13],
   zoom: 4,
-  // Negated from MapLibre's own default (0.8): reported as feeling
-  // backwards for right-click/Ctrl+drag rotate, so this flips which way
-  // the bearing turns for a given drag direction without touching pitch
-  // (pitchSpeed) or reimplementing the drag handler.
-  rotateSpeed: -0.8,
+  // Mirrored back to MapLibre's own default (0.8): the earlier negation
+  // (-0.8) turned out to feel backwards too, so this flips rotate
+  // direction back without touching pitch (pitchSpeed) or reimplementing
+  // the drag handler.
+  rotateSpeed: 0.8,
 });
+
+export function setBasemap(id: string): void {
+  const basemap = BASEMAPS[id];
+  if (basemap) map.setStyle(basemap.style);
+}
 
 const overlay = new MapboxOverlay({ layers: [] });
 map.addControl(overlay);
