@@ -24,8 +24,6 @@ function rasterStyle(tiles: string[], attribution: string): StyleSpecification {
 // fetch and keep the style spec up to date rather than us vendoring it.
 export const BASEMAPS: Record<string, { label: string; style: string | StyleSpecification }> = {
   positron: { label: "Positron (light)", style: "https://tiles.openfreemap.org/styles/positron" },
-  liberty: { label: "Liberty", style: "https://tiles.openfreemap.org/styles/liberty" },
-  bright: { label: "Bright", style: "https://tiles.openfreemap.org/styles/bright" },
   dark: { label: "Dark", style: "https://tiles.openfreemap.org/styles/dark" },
   fiord: { label: "Fiord", style: "https://tiles.openfreemap.org/styles/fiord" },
   esriSatellite: {
