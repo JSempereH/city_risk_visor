@@ -1,8 +1,18 @@
 import type { Layer, LayerAttribute } from "./api";
 import { fetchLayers, fetchLayerData, fetchLegend, fetchScenarios } from "./api";
-import { initSegmentedControl, populateAttributeSelect, populateCitySelect, type DropdownHandle } from "./ui";
+import { createDropdown, initSegmentedControl, populateAttributeSelect, populateCitySelect, type DropdownHandle } from "./ui";
 import { initBuildingPanelControls, selectBuilding } from "./buildingController";
-import { computeBbox, map, renderLayer, resetOrientation, setBuildingClickHandler, toggle3D } from "./mapLayers";
+import {
+  BASEMAPS,
+  DEFAULT_BASEMAP,
+  computeBbox,
+  map,
+  renderLayer,
+  resetOrientation,
+  setBasemap,
+  setBuildingClickHandler,
+  toggle3D,
+} from "./mapLayers";
 import { initSettingsPanel } from "./settingsPanel";
 import { initTypologyMetricsPanel } from "./typologyMetricsPanel";
 import {
@@ -184,6 +194,11 @@ async function bootstrap(): Promise<void> {
     selectAttribute,
   );
   cityDropdown = populateCitySelect(document.getElementById("city-select") as HTMLElement, layer.cities, selectCity);
+  createDropdown(
+    document.getElementById("basemap-select") as HTMLElement,
+    Object.entries(BASEMAPS).map(([value, { label }]) => ({ value, label })),
+    setBasemap,
+  ).setValue(DEFAULT_BASEMAP);
 
   const firstAttribute = layer.attributes[0];
   if (firstAttribute) {
