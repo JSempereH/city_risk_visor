@@ -6,6 +6,7 @@ import {
   type TypologyPrior,
 } from "./api";
 import { selectBuilding } from "./buildingController";
+import { loadRiskForCity } from "./scenarioController";
 import { state } from "./state";
 
 // Called once from main.ts's bootstrap (initSettingsPanel's own param),
@@ -50,6 +51,19 @@ function refreshOpenBuildingPanel(): void {
 async function applyDataChange(): Promise<void> {
   await onDataChanged();
   refreshOpenBuildingPanel();
+  // The exposure layer refresh above (onDataChanged) never touches
+  // state.riskData/scenarioSummary, so a prior applied/cleared while the
+  // Risk tab is open would otherwise keep showing scenario numbers
+  // computed under the old prior until something else happened to
+  // trigger loadRiskForCity (city switch, scenario override, mode
+  // toggle) -- same reasoning scenarioController.ts's own
+  // applyTypologyHypothesis()/clearActiveTypologyHypothesis() already
+  // apply for the hypothesis mechanism. Gated on risk mode (unlike
+  // those, reachable only from the risk panel itself) since this
+  // settings panel is also reachable from exposure mode, where
+  // loadRiskForCity's own showRiskLoading() would force the hidden
+  // scenario panel back open.
+  if (state.mode === "risk" && state.city) loadRiskForCity(state.city, state.scenarioOverrides);
 }
 
 function formatPercent(value: number): string {
