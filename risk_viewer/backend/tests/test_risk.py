@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import typology_hypothesis
+from app import typology_hypothesis, typology_prior
 from app.main import app
 from app.routers import scenarios as scenarios_router
 
@@ -24,6 +24,74 @@ def test_is_precomputable_request_false_under_active_hypothesis():
         assert scenarios_router._is_precomputable_request(TEST_CITY, None, None, None, None) is False
     finally:
         typology_hypothesis.clear_hypothesis(TEST_CITY)
+
+
+def test_is_precomputable_request_false_under_active_prior():
+    from app import data_loader
+
+    buildings = data_loader.get_buildings_by_city(TEST_CITY)
+    typology_prior.set_prior(TEST_CITY, {"ADO": 0.30, "CR": 0.15, "M": 0.55}, 0.7, buildings)
+    try:
+        assert scenarios_router._is_precomputable_request(TEST_CITY, None, None, None, None) is False
+    finally:
+        typology_prior.clear_prior(TEST_CITY)
+
+
+def test_prior_change_updates_scenario_risk_and_routes_masonry_subclasses():
+    """End-to-end guard for the property app/typology_prior.py exists to
+    provide: setting a prior must actually change what /api/scenarios/
+    {city}/risk returns (not just what compute_overrides() computes in
+    isolation, which the typology_prior unit tests already cover), and a
+    prior that resolves a building to a masonry sub-class the ensemble
+    can't predict directly (MCF, see typology_prior.py's
+    _SPLITTABLE_SUBCLASSES) must flow all the way through the live
+    vulnerability/casualty pipeline (GEM archetype selection, HAZUS
+    building-type routing) without error, exactly the same as a
+    ground-truth-recorded MCF building already does.
+    """
+    baseline = client.get(f"/api/scenarios/{TEST_CITY}/risk").json()
+    baseline_by_id = {f["properties"]["id"]: f["properties"] for f in baseline["features"]}
+    estimated_ids = {
+        building_id for building_id, props in baseline_by_id.items() if props.get("structural_system_estimated")
+    }
+    assert estimated_ids
+
+    # ADO/CR/M cover this city's own ensemble output; requesting MCF
+    # separately (rather than leaving it to fold into "M") forces
+    # compute_overrides() to actually split the "M" bucket between MCF
+    # and plain "M" (see typology_prior.py::_split_bucket_labels) instead
+    # of just picking one bucket per building -- alpha=1.0 so the prior
+    # alone decides, making which bucket wins deterministic regardless of
+    # this test dataset's own ensemble evidence.
+    response = client.post(
+        f"/api/cities/{TEST_CITY}/typology_prior",
+        json={"proportions": {"ADO": 0.30, "CR": 0.15, "MCF": 0.30, "M": 0.25}, "alpha": 1.0},
+    )
+    assert response.status_code == 200, response.json()
+    try:
+        after = client.get(f"/api/scenarios/{TEST_CITY}/risk").json()
+        after_by_id = {f["properties"]["id"]: f["properties"] for f in after["features"]}
+
+        changed = {
+            building_id
+            for building_id in estimated_ids
+            if after_by_id[building_id]["structural_system_class"] != baseline_by_id[building_id]["structural_system_class"]
+        }
+        assert changed, "expected the prior to change at least one estimated building's structural_system_class"
+
+        mcf_ids = [
+            building_id for building_id in estimated_ids if after_by_id[building_id]["structural_system_class"] == "MCF"
+        ]
+        assert mcf_ids, "expected the prior's MCF request to resolve at least one estimated building to MCF"
+        mcf_building = after_by_id[mcf_ids[0]]
+        assert mcf_building["risk_available"] is True
+        assert mcf_building["casualties_night_total"] >= 0
+        assert mcf_building["expected_damage_state"]
+
+        summary = client.get(f"/api/scenarios/{TEST_CITY}/summary").json()
+        assert summary["damage_state_counts"] != {}
+    finally:
+        typology_prior.clear_prior(TEST_CITY)
 
 
 def test_scenario_summary_uses_precomputed_shortcut(monkeypatch):
